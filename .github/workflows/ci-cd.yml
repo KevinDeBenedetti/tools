@@ -7,6 +7,10 @@ on:
 
 jobs:
   security:
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
     uses: KevinDeBenedetti/github-workflows/.github/workflows/security.yml@main
     with:
       run-node-audit: false
