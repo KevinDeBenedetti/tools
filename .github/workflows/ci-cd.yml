@@ -18,14 +18,3 @@ jobs:
       run-secret-scan: true
       run-codeql: false
     secrets: inherit
-
-  release:
-    permissions:
-      contents: write
-      pull-requests: write
-    uses: KevinDeBenedetti/github-workflows/.github/workflows/release.yml@main
-    with:
-      config-file: .github/release/release-please-config.json
-      manifest-file: .github/release/.release-please-manifest.json
-    secrets:
-      RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
