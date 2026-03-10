@@ -1,14 +1,17 @@
-## Installation
+# tools
 
-### Via Cargo
+A collection of shell scripts and utilities for development workflows.
+
+## Shell scripts
+
+| Script                      | Description                        |
+| --------------------------- | ---------------------------------- |
+| `shell/purge-gh-release.sh` | Delete GitHub releases from a repo |
+
 ```bash
-cargo install devkit
+./shell/purge-gh-release.sh <owner/repo> [--dry-run] [--keep-latest <n>] [--tag-pattern <glob>]
 ```
 
-### Via script
-```bash
-curl -fsSL https://raw.githubusercontent.com/KevinDeBenedetti/devkit/main/install.sh | sh
-```
+## Requirements
 
-### Pre-compiled binaries
-Download from the [GitHub releases](https://github.com/KevinDeBenedetti/devkit/releases)
+- [gh](https://cli.github.com/) + [jq](https://jqlang.github.io/jq/)
