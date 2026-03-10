@@ -6,6 +6,15 @@ on:
       - main
 
 jobs:
+  security:
+    uses: KevinDeBenedetti/github-workflows/.github/workflows/security.yml@main
+    with:
+      run-node-audit: false
+      run-python-audit: false
+      run-secret-scan: true
+      run-codeql: false
+    secrets: inherit
+
   release:
     permissions:
       contents: write
