@@ -1,0 +1,208 @@
+# =============================================================================
+# Python
+# =============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+pytestdebug.log
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Ruff
+.ruff_cache/
+
+# =============================================================================
+# FastAPI / Uvicorn
+# =============================================================================
+
+# Logs
+*.log
+logs/
+
+# =============================================================================
+# Database
+# =============================================================================
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# PostgreSQL
+*.pgsql
+
+# =============================================================================
+# IDE / Editor
+# =============================================================================
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# =============================================================================
+# OS
+# =============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# =============================================================================
+# Git
+# =============================================================================
+.git/
+.gitignore
+.gitattributes
+
+# =============================================================================
+# Docker
+# =============================================================================
+Dockerfile
+.dockerignore
+docker-compose*.yml
+.docker/
+
+# =============================================================================
+# Documentation
+# =============================================================================
+README.md
+CHANGELOG.md
+LICENSE
+docs/
+*.md
+
+# =============================================================================
+# CI/CD
+# =============================================================================
+.github/
+.gitlab-ci.yml
+.circleci/
+.travis.yml
+Jenkinsfile
+
+# =============================================================================
+# Development / Testing
+# =============================================================================
+
+# Environment variables (keep template)
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Testing
+tests/
+test_*.py
+*_test.py
+conftest.py
+
+# Scripts
+scripts/
+*.sh
+
+# Notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# =============================================================================
+# Project specific
+# =============================================================================
+
+# Alembic (if migrations are in separate repo or managed differently)
+# alembic/
+# migrations/
+
+# Static files (if served by CDN)
+# static/
+
+# Upload directories
+uploads/
+media/
+tmp/
+temp/

@@ -1,0 +1,74 @@
+# Version control files
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+*.md
+docs/
+.github/
+
+# Dependencies (will be installed in container)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Lock files (except pnpm-lock.yaml which is copied)
+package-lock.json
+yarn.lock
+
+# Cache files
+.npm/
+.yarn/
+.pnpm-store/
+.eslintcache
+
+# Temporary and local build files
+dist/
+build/
+.nuxt/
+.output/
+.vite/
+.cache/
+
+# Environment files (secrets)
+.env
+.env.local
+.env.*.local
+
+# Test files
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# System files
+.DS_Store
+Thumbs.db
+*.log
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Development tools
+.husky/
+.commitlint*
+.editorconfig
+.prettierrc*
+.eslintrc*
+vitest.config.*
+vite.config.*
+cypress.json
+cypress/
