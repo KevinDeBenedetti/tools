@@ -77,7 +77,7 @@ gh auth status &>/dev/null 2>&1 || die "Not authenticated — run: gh auth login
 
 echo "Fetching workflow runs for ${REPO} …"
 
-LIST_ARGS=(--repo "$REPO" --limit 1000 --json databaseId,displayTitle,workflowName,status,conclusion,createdAt)
+LIST_ARGS=(--repo "$REPO" --limit 1000 --json "databaseId,displayTitle,workflowName,status,conclusion,createdAt")
 
 [[ -n "$WORKFLOW" ]] && LIST_ARGS+=(--workflow "$WORKFLOW")
 [[ -n "$STATUS" ]]   && LIST_ARGS+=(--status "$STATUS")
