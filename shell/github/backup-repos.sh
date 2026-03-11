@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# git-backup-repos.sh — Clone bare mirrors of all your GitHub repos
-# Usage: ./git-backup-repos.sh [--dry-run] [--user <login>] [--output <dir>] [--type <type>]
+# backup-repos.sh — Clone bare mirrors of all your GitHub repos
+# Usage: ./backup-repos.sh [--dry-run] [--user <login>] [--output <dir>] [--type <type>]
 
 set -euo pipefail
 
@@ -21,16 +21,16 @@ Requirements: gh (GitHub CLI), git
 
 Examples:
   # Back up all your repos
-  ./git-backup-repos.sh
+  ./backup-repos.sh
 
   # Dry-run: list repos that would be backed up
-  ./git-backup-repos.sh --dry-run
+  ./backup-repos.sh --dry-run
 
   # Back up to a specific directory
-  ./git-backup-repos.sh --output /mnt/backups/github
+  ./backup-repos.sh --output /mnt/backups/github
 
   # Back up repos of a specific user
-  ./git-backup-repos.sh --user octocat
+  ./backup-repos.sh --user octocat
 EOF
   exit 0
 }

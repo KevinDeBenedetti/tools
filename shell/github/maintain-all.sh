@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# git-maintain-github.sh — Full maintenance pipeline for all GitHub repos
-# Usage: ./git-maintain-github.sh [--dry-run] [--parallel <n>] [--config <path>]
+# maintain-all.sh — Full maintenance pipeline for all GitHub repos
+# Usage: ./maintain-all.sh [--dry-run] [--config <path>]
 
 set -euo pipefail
 
@@ -12,7 +12,6 @@ Usage: $(basename "$0") [options]
 
 Options:
   --dry-run              Show what would be done without modifying repos
-  --parallel <n>         Number of parallel jobs (default: 6)
   --config <path>        Config file path (default: ~/.config/git-maintain/config.yml)
   -h, --help             Show this help
 
@@ -29,10 +28,10 @@ Config file format (YAML):
 
 Examples:
   # Dry-run all repos
-  ./git-maintain-github.sh --dry-run
+  ./maintain-all.sh --dry-run
 
   # Run with custom config
-  ./git-maintain-github.sh --config ./my-config.yml
+  ./maintain-all.sh --config ./my-config.yml
 EOF
   exit 0
 }
@@ -42,13 +41,11 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 # ── Argument parsing ──────────────────────────────────────────────────────────
 
 DRY_RUN="${DRY_RUN:-false}"
-PARALLEL="${PARALLEL:-6}"
 CONFIG="${CONFIG:-${HOME}/.config/git-maintain/config.yml}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)    DRY_RUN=true ;;
-    --parallel)   PARALLEL="${2:?'--parallel requires a number'}"; shift ;;
     --config)     CONFIG="${2:?'--config requires a path'}"; shift ;;
     -h|--help)    usage ;;
     *) die "Unknown option: $1" ;;
@@ -203,7 +200,7 @@ run() {
 
   local count
   count=$(echo "$repos" | wc -l | tr -d ' ')
-  echo "Found ${count} repo(s). Processing with ${PARALLEL} parallel job(s)…"
+  echo "Found ${count} repo(s)."
 
   while IFS= read -r repo; do
     backup_repo "$repo"

@@ -1,15 +1,15 @@
 #!/usr/bin/env bats
 
-# Tests for git-backup-repos.sh
+# Tests for backup-repos.sh
 # Uses mocked gh/git commands — never touches real repos
 
 setup() {
   DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)"
-  REPO_ROOT="$(cd "$DIR/.." && pwd)"
-  SCRIPT="${REPO_ROOT}/shell/git-backup-repos.sh"
+  REPO_ROOT="$(cd "$DIR/../.." && pwd)"
+  SCRIPT="${REPO_ROOT}/shell/github/backup-repos.sh"
 
-  load 'test_helper/bats-support/load'
-  load 'test_helper/bats-assert/load'
+  load '../test_helper/bats-support/load'
+  load '../test_helper/bats-assert/load'
 
   MOCK_BIN="$(mktemp -d)"
   export PATH="${MOCK_BIN}:${PATH}"

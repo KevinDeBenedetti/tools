@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# purge-gh-tags.sh — Delete all (or filtered) tags from a GitHub repo
-# Usage: ./purge-gh-tags.sh <owner/repo> [--dry-run] [--keep-latest <n>] [--tag-pattern <glob>]
+# purge-tags.sh — Delete all (or filtered) tags from a GitHub repo
+# Usage: ./purge-tags.sh --repo <owner/repo> [--dry-run] [--keep-latest <n>] [--tag-pattern <glob>]
 
 set -euo pipefail
 
@@ -8,9 +8,10 @@ set -euo pipefail
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") <owner/repo> [options]
+Usage: $(basename "$0") [options]
 
 Options:
+  --repo <owner/repo>    Target GitHub repository (required)
   --dry-run              List what would be deleted without deleting
   --keep-latest <n>      Keep the n most recent tags (default: 0)
   --tag-pattern <glob>   Only delete tags whose name matches the glob
@@ -21,16 +22,16 @@ Requirements: gh (GitHub CLI), jq
 
 Examples:
   # Delete every tag in a repo
-  ./purge-gh-tags.sh owner/repo
+  ./purge-tags.sh --repo owner/repo
 
   # Dry-run: see what would be deleted
-  ./purge-gh-tags.sh owner/repo --dry-run
+  ./purge-tags.sh --repo owner/repo --dry-run
 
   # Keep the 3 most recent tags
-  ./purge-gh-tags.sh owner/repo --keep-latest 3
+  ./purge-tags.sh --repo owner/repo --keep-latest 3
 
   # Only delete tags matching "v0.*"
-  ./purge-gh-tags.sh owner/repo --tag-pattern "v0.*"
+  ./purge-tags.sh --repo owner/repo --tag-pattern "v0.*"
 EOF
   exit 0
 }
@@ -39,16 +40,14 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 
 # ── Argument parsing ──────────────────────────────────────────────────────────
 
-[[ $# -lt 1 ]] && usage
-[[ "$1" == "-h" || "$1" == "--help" ]] && usage
-REPO="$1"; shift
-
+REPO=""
 DRY_RUN=false
 KEEP_LATEST=0
 TAG_PATTERN=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --repo)             REPO="${2:?'--repo requires owner/repo'}"; shift ;;
     --dry-run)          DRY_RUN=true ;;
     --keep-latest)      KEEP_LATEST="${2:?'--keep-latest requires a number'}"; shift ;;
     --tag-pattern)      TAG_PATTERN="${2:?'--tag-pattern requires a glob'}"; shift ;;
@@ -57,6 +56,8 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
+[[ -n "$REPO" ]] || die "--repo <owner/repo> is required"
 
 # ── Pre-flight checks ─────────────────────────────────────────────────────────
 

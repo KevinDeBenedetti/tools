@@ -1,16 +1,16 @@
 #!/usr/bin/env bats
 
-# Tests for git-maintain-github.sh
+# Tests for maintain-all.sh
 # Uses mocked commands — never touches real repos
 
 setup() {
   DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)"
-  REPO_ROOT="$(cd "$DIR/.." && pwd)"
-  SCRIPT="${REPO_ROOT}/shell/git-maintain-github.sh"
+  REPO_ROOT="$(cd "$DIR/../.." && pwd)"
+  SCRIPT="${REPO_ROOT}/shell/github/maintain-all.sh"
 
-  load 'test_helper/bats-support/load'
-  load 'test_helper/bats-assert/load'
-  load 'test_helper/bats-file/load'
+  load '../test_helper/bats-support/load'
+  load '../test_helper/bats-assert/load'
+  load '../test_helper/bats-file/load'
 
   MOCK_BIN="$(mktemp -d)"
   export PATH="${MOCK_BIN}:${PATH}"
@@ -28,7 +28,6 @@ teardown() {
   assert_success
   assert_output --partial "Usage:"
   assert_output --partial "--dry-run"
-  assert_output --partial "--parallel"
   assert_output --partial "--config"
 }
 

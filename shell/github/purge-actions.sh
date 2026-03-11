@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# purge-gh-actions.sh — Delete all (or filtered) workflow runs from a GitHub repo
-# Usage: ./purge-gh-actions.sh <owner/repo> [--dry-run] [--keep-latest <n>] [--workflow <name>] [--status <status>]
+# purge-actions.sh — Delete all (or filtered) workflow runs from a GitHub repo
+# Usage: ./purge-actions.sh --repo <owner/repo> [--dry-run] [--keep-latest <n>] [--workflow <name>] [--status <status>]
 
 set -euo pipefail
 
@@ -8,9 +8,10 @@ set -euo pipefail
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") <owner/repo> [options]
+Usage: $(basename "$0") [options]
 
 Options:
+  --repo <owner/repo>    Target GitHub repository (required)
   --dry-run              List what would be deleted without deleting
   --keep-latest <n>      Keep the n most recent runs (default: 0)
   --workflow <name>      Only delete runs of a specific workflow (file name or name)
@@ -25,19 +26,19 @@ Requirements: gh (GitHub CLI), jq
 
 Examples:
   # Delete every workflow run in a repo
-  ./purge-gh-actions.sh owner/repo
+  ./purge-actions.sh --repo owner/repo
 
   # Dry-run: see what would be deleted
-  ./purge-gh-actions.sh owner/repo --dry-run
+  ./purge-actions.sh --repo owner/repo --dry-run
 
   # Keep the 5 most recent runs
-  ./purge-gh-actions.sh owner/repo --keep-latest 5
+  ./purge-actions.sh --repo owner/repo --keep-latest 5
 
   # Only delete runs from a specific workflow
-  ./purge-gh-actions.sh owner/repo --workflow "CI"
+  ./purge-actions.sh --repo owner/repo --workflow "CI"
 
   # Only delete failed runs
-  ./purge-gh-actions.sh owner/repo --status failure
+  ./purge-actions.sh --repo owner/repo --status failure
 EOF
   exit 0
 }
@@ -46,10 +47,7 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 
 # ── Argument parsing ──────────────────────────────────────────────────────────
 
-[[ $# -lt 1 ]] && usage
-[[ "$1" == "-h" || "$1" == "--help" ]] && usage
-REPO="$1"; shift
-
+REPO=""
 DRY_RUN=false
 KEEP_LATEST=0
 WORKFLOW=""
@@ -57,6 +55,7 @@ STATUS=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --repo)             REPO="${2:?'--repo requires owner/repo'}"; shift ;;
     --dry-run)          DRY_RUN=true ;;
     --keep-latest)      KEEP_LATEST="${2:?'--keep-latest requires a number'}"; shift ;;
     --workflow)         WORKFLOW="${2:?'--workflow requires a name'}"; shift ;;
@@ -66,6 +65,8 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
+[[ -n "$REPO" ]] || die "--repo <owner/repo> is required"
 
 # ── Pre-flight checks ─────────────────────────────────────────────────────────
 

@@ -1,15 +1,15 @@
 #!/usr/bin/env bats
 
-# Tests for git-detect-bots.sh
-# Uses mocked git commands — never touches real repos
+# Tests for scan-secrets.sh
+# Uses mocked git — never touches real repos
 
 setup() {
   DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)"
-  REPO_ROOT="$(cd "$DIR/.." && pwd)"
-  SCRIPT="${REPO_ROOT}/shell/git-detect-bots.sh"
+  REPO_ROOT="$(cd "$DIR/../.." && pwd)"
+  SCRIPT="${REPO_ROOT}/shell/github/scan-secrets.sh"
 
-  load 'test_helper/bats-support/load'
-  load 'test_helper/bats-assert/load'
+  load '../test_helper/bats-support/load'
+  load '../test_helper/bats-assert/load'
 
   MOCK_BIN="$(mktemp -d)"
   export PATH="${MOCK_BIN}:${PATH}"
@@ -28,7 +28,7 @@ teardown() {
   assert_output --partial "--repo"
   assert_output --partial "--local"
   assert_output --partial "--dry-run"
-  assert_output --partial "--format"
+  assert_output --partial "--history"
 }
 
 @test "shows usage with -h" {
@@ -59,7 +59,7 @@ MOCK
   run "$SCRIPT" --dry-run
   assert_success
   assert_output --partial "[dry-run]"
-  assert_output --partial "Bot patterns"
+  assert_output --partial "rules"
 }
 
 @test "dry-run for remote repo shows clone info" {
@@ -79,43 +79,30 @@ MOCK
   assert_output --partial "[dry-run] Would clone owner/repo"
 }
 
-# ── Local scan with mocked data ──────────────────────────────────────────────
-
-@test "detects bot commits in local repo" {
+@test "dry-run shows history flag state" {
   cat > "${MOCK_BIN}/git" <<'MOCK'
 #!/usr/bin/env bash
 if [[ "$1" == "rev-parse" && "$2" == "--is-inside-work-tree" ]]; then echo "true"; exit 0; fi
 if [[ "$1" == "rev-parse" && "$2" == "--show-toplevel" ]]; then echo "/tmp/fake-repo"; exit 0; fi
-if [[ "$1" == "-C" && "$3" == "log" ]]; then
-  cat <<'LOG'
-abc12345|dependabot[bot]|dependabot@github.com|Bump lodash from 4.17.20 to 4.17.21
-def67890|renovate[bot]|renovate@whitesourcesoftware.com|Update dependency express to v4.18.2
-111aaabb|John Doe|john@example.com|Add new feature
-LOG
-  exit 0
-fi
-if [[ "$1" == "-C" && "$3" == "rev-list" ]]; then echo "50"; exit 0; fi
 exit 0
 MOCK
   chmod +x "${MOCK_BIN}/git"
 
-  run "$SCRIPT" --local
+  run "$SCRIPT" --dry-run --history
   assert_success
-  assert_output --partial "2 bot commit(s)"
-  assert_output --partial "dependabot"
-  assert_output --partial "renovate"
+  assert_output --partial "History scan: true"
 }
 
-@test "reports no bot commits when clean" {
+# ── Local scan with mocked data ──────────────────────────────────────────────
+
+@test "detects secrets in working tree" {
   cat > "${MOCK_BIN}/git" <<'MOCK'
 #!/usr/bin/env bash
 if [[ "$1" == "rev-parse" && "$2" == "--is-inside-work-tree" ]]; then echo "true"; exit 0; fi
 if [[ "$1" == "rev-parse" && "$2" == "--show-toplevel" ]]; then echo "/tmp/fake-repo"; exit 0; fi
-if [[ "$1" == "-C" && "$3" == "log" ]]; then
-  cat <<'LOG'
-abc12345|John Doe|john@example.com|Add feature
-def67890|Jane Smith|jane@example.com|Fix bug
-LOG
+if [[ "$1" == "-C" && "$3" == "grep" ]]; then
+  echo "config.py:3:API_KEY = \"sk-abc123longfakekey\""
+  echo ".env:1:AWS_SECRET_ACCESS_KEY = \"wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\""
   exit 0
 fi
 exit 0
@@ -123,6 +110,22 @@ MOCK
   chmod +x "${MOCK_BIN}/git"
 
   run "$SCRIPT" --local
+  assert_failure  # exits with 1 when secrets found
+  assert_output --partial "2 potential secret(s)"
+  assert_output --partial "WARNING"
+}
+
+@test "reports no secrets when clean" {
+  cat > "${MOCK_BIN}/git" <<'MOCK'
+#!/usr/bin/env bash
+if [[ "$1" == "rev-parse" && "$2" == "--is-inside-work-tree" ]]; then echo "true"; exit 0; fi
+if [[ "$1" == "rev-parse" && "$2" == "--show-toplevel" ]]; then echo "/tmp/fake-repo"; exit 0; fi
+if [[ "$1" == "-C" && "$3" == "grep" ]]; then exit 1; fi  # no matches
+exit 0
+MOCK
+  chmod +x "${MOCK_BIN}/git"
+
+  run "$SCRIPT" --local
   assert_success
-  assert_output --partial "No bot commits found"
+  assert_output --partial "No secrets detected"
 }
