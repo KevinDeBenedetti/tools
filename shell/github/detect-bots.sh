@@ -50,6 +50,9 @@ Examples:
   # Remove bot commits from local repo
   ./detect-bots.sh --purge-bots
 
+  # Remove bot commits from a remote repo (clones locally)
+  ./detect-bots.sh --repo owner/repo --purge-bots
+
   # Dry-run purge (preview only)
   ./detect-bots.sh --purge-bots --dry-run
 EOF
@@ -87,7 +90,6 @@ if [[ "$LOCAL" == false ]]; then
 fi
 if $PURGE; then
   command -v git-filter-repo &>/dev/null || die "'git-filter-repo' is required for --purge-bots (brew install git-filter-repo)"
-  [[ "$LOCAL" == true ]] || die "--purge-bots only works on local repos (not with --repo)"
 fi
 
 # ── Build regex pattern ───────────────────────────────────────────────────────
@@ -104,8 +106,13 @@ if [[ "$LOCAL" == true ]]; then
   REPO_NAME=$(basename "$(git rev-parse --show-toplevel)")
 else
   REPO_NAME=$(basename "$REPO")
-  SCAN_DIR=$(mktemp -d)
-  CLEANUP_DIR="$SCAN_DIR"
+  if $PURGE; then
+    SCAN_DIR="./${REPO_NAME}"
+    [[ -d "$SCAN_DIR" ]] && die "Directory '${REPO_NAME}' already exists. Remove it first or cd elsewhere."
+  else
+    SCAN_DIR=$(mktemp -d)
+    CLEANUP_DIR="$SCAN_DIR"
+  fi
 
   if $DRY_RUN; then
     echo "[dry-run] Would clone ${REPO} and scan for bot commits"
@@ -115,8 +122,12 @@ else
   fi
 
   echo "Cloning ${REPO} …"
-  git clone --quiet "https://github.com/${REPO}.git" "${SCAN_DIR}/${REPO_NAME}" 2>/dev/null
-  SCAN_DIR="${SCAN_DIR}/${REPO_NAME}"
+  if $PURGE; then
+    git clone --quiet "https://github.com/${REPO}.git" "${SCAN_DIR}" 2>/dev/null
+  else
+    git clone --quiet "https://github.com/${REPO}.git" "${SCAN_DIR}/${REPO_NAME}" 2>/dev/null
+    SCAN_DIR="${SCAN_DIR}/${REPO_NAME}"
+  fi
 fi
 
 # shellcheck disable=SC2064
@@ -129,13 +140,20 @@ if $DRY_RUN && ! $PURGE; then
   exit 0
 fi
 
+if $DRY_RUN && $PURGE && [[ "$LOCAL" == true ]]; then
+  echo "[dry-run] Would scan and purge bot commits from ${REPO_NAME}"
+  echo "[dry-run] Bot patterns (${#DEFAULT_BOT_PATTERNS[@]}):"
+  printf '           %s\n' "${DEFAULT_BOT_PATTERNS[@]}"
+  exit 0
+fi
+
 # ── Scan for bot commits ─────────────────────────────────────────────────────
 
 echo "Scanning ${REPO_NAME} for bot commits…"
 
 BOT_LOG=$(git -C "$SCAN_DIR" log --all \
   --format='%H|%an|%ae|%s' \
-  | grep -iE "$PATTERN" || true)
+  | BOTPAT="$PATTERN" awk -F'|' 'tolower($2) ~ ENVIRON["BOTPAT"] || tolower($3) ~ ENVIRON["BOTPAT"]' || true)
 
 if [[ -z "$BOT_LOG" ]]; then
   echo "No bot commits found."
@@ -195,12 +213,12 @@ if $PURGE; then
   [[ "$CONFIRM" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
 
   # Save origin URL before filter-repo removes it
-  ORIGIN_URL=$(git remote get-url origin 2>/dev/null || true)
+  ORIGIN_URL=$(git -C "$SCAN_DIR" remote get-url origin 2>/dev/null || true)
 
   echo ""
   echo "Purging bot commits…"
   # shellcheck disable=SC2016
-  git-filter-repo --commit-callback '
+  git -C "$SCAN_DIR" filter-repo --commit-callback '
 name  = commit.author_name.lower()
 email = commit.author_email.lower()
 patterns = [
@@ -214,15 +232,25 @@ if any(p in name or p in email for p in patterns):
 
   # Restore origin remote
   if [[ -n "$ORIGIN_URL" ]]; then
-    git remote add origin "$ORIGIN_URL"
+    git -C "$SCAN_DIR" remote add origin "$ORIGIN_URL"
   fi
 
-  NEW_TOTAL=$(git rev-list --all --count)
+  NEW_TOTAL=$(git -C "$SCAN_DIR" rev-list --all --count)
   echo ""
   echo "Done. ${BOT_COUNT} bot commit(s) removed."
   echo "Commits: ${TOTAL_COMMITS} → ${NEW_TOTAL}"
   echo ""
-  echo "Next steps:"
-  echo "  git push --force --all"
-  echo "  git push --force --tags"
+  if [[ "$LOCAL" == false ]]; then
+    ABS_PATH=$(cd "$SCAN_DIR" && pwd)
+    echo "Cloned repo: ${ABS_PATH}"
+    echo ""
+    echo "Next steps:"
+    echo "  cd ${ABS_PATH}"
+    echo "  git push --force --all"
+    echo "  git push --force --tags"
+  else
+    echo "Next steps:"
+    echo "  git push --force --all"
+    echo "  git push --force --tags"
+  fi
 fi

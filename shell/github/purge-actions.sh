@@ -128,7 +128,7 @@ for row in $(echo "$RUNS" | jq -r '.[] | @base64'); do
     echo "Deleting: #${RUN_ID} — ${WF_NAME} / ${TITLE} (${CONCLUSION})"
     gh run delete "$RUN_ID" --repo "$REPO"
   fi
-  (( DELETED++ ))
+  (( ++DELETED ))
 done
 
 echo ""

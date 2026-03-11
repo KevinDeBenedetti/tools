@@ -127,6 +127,27 @@ MOCK
   assert_output --partial "No bot commits found"
 }
 
+@test "ignores bot keywords in commit subject only" {
+  cat > "${MOCK_BIN}/git" <<'MOCK'
+#!/usr/bin/env bash
+if [[ "$1" == "rev-parse" && "$2" == "--is-inside-work-tree" ]]; then echo "true"; exit 0; fi
+if [[ "$1" == "rev-parse" && "$2" == "--show-toplevel" ]]; then echo "/tmp/fake-repo"; exit 0; fi
+if [[ "$1" == "-C" && "$3" == "log" ]]; then
+  cat <<'LOG'
+abc12345|John Doe|john@example.com|chore: re-trigger release-please with 0.1.0
+def67890|Jane Smith|jane@example.com|Update dependabot config
+LOG
+  exit 0
+fi
+exit 0
+MOCK
+  chmod +x "${MOCK_BIN}/git"
+
+  run "$SCRIPT" --local
+  assert_success
+  assert_output --partial "No bot commits found"
+}
+
 # ── Purge-bots ────────────────────────────────────────────────────────────────
 
 @test "purge-bots requires git-filter-repo" {
@@ -146,9 +167,15 @@ MOCK
   assert_output --partial "git-filter-repo"
 }
 
-@test "purge-bots rejects --repo flag" {
+@test "purge-bots with --repo clones and scans" {
   cat > "${MOCK_BIN}/git" <<'MOCK'
 #!/usr/bin/env bash
+if [[ "$1" == "clone" ]]; then
+  # Simulate clone by creating directory
+  mkdir -p "$4"
+  git init --quiet "$4" 2>/dev/null || true
+  exit 0
+fi
 exit 0
 MOCK
   chmod +x "${MOCK_BIN}/git"
@@ -163,9 +190,11 @@ exit 0
 MOCK
   chmod +x "${MOCK_BIN}/git-filter-repo"
 
-  run "$SCRIPT" --repo owner/repo --purge-bots
-  assert_failure
-  assert_output --partial "only works on local"
+  # Run from a temp dir to avoid polluting the workspace
+  cd "$(mktemp -d)"
+  run "$SCRIPT" --repo owner/repo --purge-bots --dry-run
+  assert_success
+  assert_output --partial "[dry-run] Would clone owner/repo"
 }
 
 @test "purge-bots dry-run shows preview" {
@@ -190,5 +219,5 @@ MOCK
   run "$SCRIPT" --purge-bots --dry-run
   assert_success
   assert_output --partial "[dry-run]"
-  assert_output --partial "1 bot commit(s)"
+  assert_output --partial "Would scan and purge bot commits"
 }
