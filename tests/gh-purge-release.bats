@@ -1,0 +1,125 @@
+#!/usr/bin/env bats
+
+# Tests for gh-purge-release.sh
+# Uses mocked gh/jq commands — never touches real repos
+
+setup() {
+  DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)"
+  REPO_ROOT="$(cd "$DIR/.." && pwd)"
+  SCRIPT="${REPO_ROOT}/shell/gh-purge-release.sh"
+
+  load 'test_helper/bats-support/load'
+  load 'test_helper/bats-assert/load'
+
+  MOCK_BIN="$(mktemp -d)"
+  export PATH="${MOCK_BIN}:${PATH}"
+}
+
+teardown() {
+  rm -rf "$MOCK_BIN"
+}
+
+# ── Usage & help ──────────────────────────────────────────────────────────────
+
+@test "shows usage when no arguments" {
+  run "$SCRIPT"
+  assert_success
+  assert_output --partial "Usage:"
+}
+
+@test "shows usage with --help" {
+  run "$SCRIPT" --help
+  assert_success
+  assert_output --partial "--dry-run"
+  assert_output --partial "--keep-latest"
+  assert_output --partial "--tag-pattern"
+}
+
+# ── Argument validation ──────────────────────────────────────────────────────
+
+@test "fails on unknown option" {
+  cat > "${MOCK_BIN}/gh" <<'MOCK'
+#!/usr/bin/env bash
+if [[ "$1" == "auth" ]]; then exit 0; fi
+echo ""
+MOCK
+  chmod +x "${MOCK_BIN}/gh"
+
+  run "$SCRIPT" owner/repo --bogus
+  assert_failure
+  assert_output --partial "Unknown option"
+}
+
+# ── Dry-run with mocked data ─────────────────────────────────────────────────
+
+@test "dry-run lists releases without deleting" {
+  cat > "${MOCK_BIN}/gh" <<'MOCK'
+#!/usr/bin/env bash
+if [[ "$1" == "auth" ]]; then exit 0; fi
+if [[ "$1" == "release" && "$2" == "list" ]]; then
+  printf "v1.2.0\nv1.1.0\nv1.0.0\n"
+  exit 0
+fi
+echo "UNEXPECTED: $*" >&2; exit 1
+MOCK
+  chmod +x "${MOCK_BIN}/gh"
+
+  run "$SCRIPT" owner/repo --dry-run
+  assert_success
+  assert_output --partial "[dry-run] Would delete: v1.2.0"
+  assert_output --partial "[dry-run] Would delete: v1.1.0"
+  assert_output --partial "[dry-run] Would delete: v1.0.0"
+  assert_output --partial "3 release(s) would have been deleted"
+}
+
+@test "dry-run with --keep-latest preserves recent releases" {
+  cat > "${MOCK_BIN}/gh" <<'MOCK'
+#!/usr/bin/env bash
+if [[ "$1" == "auth" ]]; then exit 0; fi
+if [[ "$1" == "release" && "$2" == "list" ]]; then
+  printf "v2.0.0\nv1.1.0\nv1.0.0\n"
+  exit 0
+fi
+echo "UNEXPECTED: $*" >&2; exit 1
+MOCK
+  chmod +x "${MOCK_BIN}/gh"
+
+  run "$SCRIPT" owner/repo --dry-run --keep-latest 1
+  assert_success
+  refute_output --partial "v2.0.0"
+  assert_output --partial "[dry-run] Would delete: v1.1.0"
+  assert_output --partial "[dry-run] Would delete: v1.0.0"
+}
+
+@test "dry-run with --tag-pattern filters by glob" {
+  cat > "${MOCK_BIN}/gh" <<'MOCK'
+#!/usr/bin/env bash
+if [[ "$1" == "auth" ]]; then exit 0; fi
+if [[ "$1" == "release" && "$2" == "list" ]]; then
+  printf "v2.0.0\nv1.0.0-beta\nv0.9.0-beta\n"
+  exit 0
+fi
+echo "UNEXPECTED: $*" >&2; exit 1
+MOCK
+  chmod +x "${MOCK_BIN}/gh"
+
+  run "$SCRIPT" owner/repo --dry-run --tag-pattern "*-beta"
+  assert_success
+  refute_output --partial "v2.0.0"
+  assert_output --partial "v1.0.0-beta"
+  assert_output --partial "v0.9.0-beta"
+}
+
+@test "reports no releases found when empty" {
+  cat > "${MOCK_BIN}/gh" <<'MOCK'
+#!/usr/bin/env bash
+if [[ "$1" == "auth" ]]; then exit 0; fi
+if [[ "$1" == "release" && "$2" == "list" ]]; then echo ""; exit 0; fi
+echo "UNEXPECTED: $*" >&2; exit 1
+MOCK
+  chmod +x "${MOCK_BIN}/gh"
+
+  run "$SCRIPT" owner/repo --dry-run
+  assert_success
+  assert_output --partial "No releases found"
+}
