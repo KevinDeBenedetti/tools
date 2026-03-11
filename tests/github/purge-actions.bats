@@ -1,15 +1,15 @@
 #!/usr/bin/env bats
 
-# Tests for gh-purge-actions.sh
+# Tests for purge-actions.sh
 # Uses mocked gh/jq commands — never touches real repos
 
 setup() {
   DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)"
-  REPO_ROOT="$(cd "$DIR/.." && pwd)"
-  SCRIPT="${REPO_ROOT}/shell/gh-purge-actions.sh"
+  REPO_ROOT="$(cd "$DIR/../.." && pwd)"
+  SCRIPT="${REPO_ROOT}/shell/github/purge-actions.sh"
 
-  load 'test_helper/bats-support/load'
-  load 'test_helper/bats-assert/load'
+  load '../test_helper/bats-support/load'
+  load '../test_helper/bats-assert/load'
 
   # Create a temp bin dir for mocks
   MOCK_BIN="$(mktemp -d)"
@@ -22,10 +22,10 @@ teardown() {
 
 # ── Usage & help ──────────────────────────────────────────────────────────────
 
-@test "shows usage when no arguments" {
+@test "fails when --repo is missing" {
   run "$SCRIPT"
-  assert_success
-  assert_output --partial "Usage:"
+  assert_failure
+  assert_output --partial "--repo"
 }
 
 @test "shows usage with --help" {
@@ -55,7 +55,7 @@ echo '[]'
 MOCK
   chmod +x "${MOCK_BIN}/gh"
 
-  run "$SCRIPT" owner/repo --bogus
+  run "$SCRIPT" --repo owner/repo --bogus
   assert_failure
   assert_output --partial "Unknown option"
 }
@@ -79,7 +79,7 @@ echo "UNEXPECTED: $*" >&2; exit 1
 MOCK
   chmod +x "${MOCK_BIN}/gh"
 
-  run "$SCRIPT" owner/repo --dry-run
+  run "$SCRIPT" --repo owner/repo --dry-run
   assert_success
   assert_output --partial "[dry-run] Would delete"
   assert_output --partial "#1001"
@@ -105,7 +105,7 @@ echo "UNEXPECTED: $*" >&2; exit 1
 MOCK
   chmod +x "${MOCK_BIN}/gh"
 
-  run "$SCRIPT" owner/repo --dry-run --keep-latest 2
+  run "$SCRIPT" --repo owner/repo --dry-run --keep-latest 2
   assert_success
   assert_output --partial "[dry-run] Would delete"
   assert_output --partial "#1003"
@@ -122,7 +122,7 @@ echo "UNEXPECTED: $*" >&2; exit 1
 MOCK
   chmod +x "${MOCK_BIN}/gh"
 
-  run "$SCRIPT" owner/repo --dry-run
+  run "$SCRIPT" --repo owner/repo --dry-run
   assert_success
   assert_output --partial "No workflow runs found"
 }
@@ -134,7 +134,7 @@ MOCK
   rm -f "${MOCK_BIN}/gh"
   export PATH="${MOCK_BIN}:/usr/bin:/bin"
 
-  run "$SCRIPT" owner/repo
+  run "$SCRIPT" --repo owner/repo
   assert_failure
   assert_output --partial "gh"
 }

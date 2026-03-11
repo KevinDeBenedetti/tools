@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# git-clean-repo.sh — Remove unwanted files from a Git repo and rewrite history
-# Usage: ./git-clean-repo.sh [--dry-run] [--paths <file>...] [--aggressive]
+# clean-repo.sh — Remove unwanted files from a Git repo and rewrite history
+# Usage: ./clean-repo.sh [--dry-run] [--paths <file>...] [--aggressive]
 
 set -euo pipefail
 
@@ -24,16 +24,16 @@ Requirements: git, git-filter-repo
 
 Examples:
   # Clean default files (.DS_Store, .env, etc.)
-  ./git-clean-repo.sh
+  ./clean-repo.sh
 
   # Dry-run first
-  ./git-clean-repo.sh --dry-run
+  ./clean-repo.sh --dry-run
 
   # Remove specific files
-  ./git-clean-repo.sh --paths secret.txt debug.log --
+  ./clean-repo.sh --paths secret.txt debug.log --
 
   # Aggressive cleanup
-  ./git-clean-repo.sh --aggressive
+  ./clean-repo.sh --aggressive
 EOF
   exit 0
 }

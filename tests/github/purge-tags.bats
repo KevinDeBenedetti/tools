@@ -1,15 +1,15 @@
 #!/usr/bin/env bats
 
-# Tests for gh-purge-release.sh
+# Tests for purge-tags.sh
 # Uses mocked gh/jq commands — never touches real repos
 
 setup() {
   DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)"
-  REPO_ROOT="$(cd "$DIR/.." && pwd)"
-  SCRIPT="${REPO_ROOT}/shell/gh-purge-release.sh"
+  REPO_ROOT="$(cd "$DIR/../.." && pwd)"
+  SCRIPT="${REPO_ROOT}/shell/github/purge-tags.sh"
 
-  load 'test_helper/bats-support/load'
-  load 'test_helper/bats-assert/load'
+  load '../test_helper/bats-support/load'
+  load '../test_helper/bats-assert/load'
 
   MOCK_BIN="$(mktemp -d)"
   export PATH="${MOCK_BIN}:${PATH}"
@@ -21,10 +21,10 @@ teardown() {
 
 # ── Usage & help ──────────────────────────────────────────────────────────────
 
-@test "shows usage when no arguments" {
+@test "fails when --repo is missing" {
   run "$SCRIPT"
-  assert_success
-  assert_output --partial "Usage:"
+  assert_failure
+  assert_output --partial "--repo"
 }
 
 @test "shows usage with --help" {
@@ -45,18 +45,18 @@ echo ""
 MOCK
   chmod +x "${MOCK_BIN}/gh"
 
-  run "$SCRIPT" owner/repo --bogus
+  run "$SCRIPT" --repo owner/repo --bogus
   assert_failure
   assert_output --partial "Unknown option"
 }
 
 # ── Dry-run with mocked data ─────────────────────────────────────────────────
 
-@test "dry-run lists releases without deleting" {
+@test "dry-run lists tags without deleting" {
   cat > "${MOCK_BIN}/gh" <<'MOCK'
 #!/usr/bin/env bash
 if [[ "$1" == "auth" ]]; then exit 0; fi
-if [[ "$1" == "release" && "$2" == "list" ]]; then
+if [[ "$1" == "api" ]]; then
   printf "v1.2.0\nv1.1.0\nv1.0.0\n"
   exit 0
 fi
@@ -64,30 +64,30 @@ echo "UNEXPECTED: $*" >&2; exit 1
 MOCK
   chmod +x "${MOCK_BIN}/gh"
 
-  run "$SCRIPT" owner/repo --dry-run
+  run "$SCRIPT" --repo owner/repo --dry-run
   assert_success
   assert_output --partial "[dry-run] Would delete: v1.2.0"
   assert_output --partial "[dry-run] Would delete: v1.1.0"
   assert_output --partial "[dry-run] Would delete: v1.0.0"
-  assert_output --partial "3 release(s) would have been deleted"
+  assert_output --partial "3 tag(s) would have been deleted"
 }
 
-@test "dry-run with --keep-latest preserves recent releases" {
+@test "dry-run with --keep-latest preserves recent tags" {
   cat > "${MOCK_BIN}/gh" <<'MOCK'
 #!/usr/bin/env bash
 if [[ "$1" == "auth" ]]; then exit 0; fi
-if [[ "$1" == "release" && "$2" == "list" ]]; then
-  printf "v2.0.0\nv1.1.0\nv1.0.0\n"
+if [[ "$1" == "api" ]]; then
+  printf "v3.0.0\nv2.0.0\nv1.0.0\n"
   exit 0
 fi
 echo "UNEXPECTED: $*" >&2; exit 1
 MOCK
   chmod +x "${MOCK_BIN}/gh"
 
-  run "$SCRIPT" owner/repo --dry-run --keep-latest 1
+  run "$SCRIPT" --repo owner/repo --dry-run --keep-latest 2
   assert_success
+  refute_output --partial "v3.0.0"
   refute_output --partial "v2.0.0"
-  assert_output --partial "[dry-run] Would delete: v1.1.0"
   assert_output --partial "[dry-run] Would delete: v1.0.0"
 }
 
@@ -95,31 +95,31 @@ MOCK
   cat > "${MOCK_BIN}/gh" <<'MOCK'
 #!/usr/bin/env bash
 if [[ "$1" == "auth" ]]; then exit 0; fi
-if [[ "$1" == "release" && "$2" == "list" ]]; then
-  printf "v2.0.0\nv1.0.0-beta\nv0.9.0-beta\n"
+if [[ "$1" == "api" ]]; then
+  printf "v2.0.0\nv1.0.0-rc1\nv0.9.0-rc2\n"
   exit 0
 fi
 echo "UNEXPECTED: $*" >&2; exit 1
 MOCK
   chmod +x "${MOCK_BIN}/gh"
 
-  run "$SCRIPT" owner/repo --dry-run --tag-pattern "*-beta"
+  run "$SCRIPT" --repo owner/repo --dry-run --tag-pattern "*-rc*"
   assert_success
   refute_output --partial "v2.0.0"
-  assert_output --partial "v1.0.0-beta"
-  assert_output --partial "v0.9.0-beta"
+  assert_output --partial "v1.0.0-rc1"
+  assert_output --partial "v0.9.0-rc2"
 }
 
-@test "reports no releases found when empty" {
+@test "reports no tags found when empty" {
   cat > "${MOCK_BIN}/gh" <<'MOCK'
 #!/usr/bin/env bash
 if [[ "$1" == "auth" ]]; then exit 0; fi
-if [[ "$1" == "release" && "$2" == "list" ]]; then echo ""; exit 0; fi
+if [[ "$1" == "api" ]]; then echo ""; exit 0; fi
 echo "UNEXPECTED: $*" >&2; exit 1
 MOCK
   chmod +x "${MOCK_BIN}/gh"
 
-  run "$SCRIPT" owner/repo --dry-run
+  run "$SCRIPT" --repo owner/repo --dry-run
   assert_success
-  assert_output --partial "No releases found"
+  assert_output --partial "No tags found"
 }

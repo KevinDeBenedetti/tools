@@ -1,16 +1,16 @@
 #!/usr/bin/env bats
 
-# Tests for git-clean-repo.sh
+# Tests for clean-repo.sh
 # Uses mocked git/git-filter-repo — never touches real repos
 
 setup() {
   DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)"
-  REPO_ROOT="$(cd "$DIR/.." && pwd)"
-  SCRIPT="${REPO_ROOT}/shell/git-clean-repo.sh"
+  REPO_ROOT="$(cd "$DIR/../.." && pwd)"
+  SCRIPT="${REPO_ROOT}/shell/github/clean-repo.sh"
 
-  load 'test_helper/bats-support/load'
-  load 'test_helper/bats-assert/load'
-  load 'test_helper/bats-file/load'
+  load '../test_helper/bats-support/load'
+  load '../test_helper/bats-assert/load'
+  load '../test_helper/bats-file/load'
 
   MOCK_BIN="$(mktemp -d)"
   export PATH="${MOCK_BIN}:${PATH}"

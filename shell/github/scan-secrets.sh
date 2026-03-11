@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# git-scan-secrets.sh — Scan a Git repo for accidentally committed secrets
-# Usage: ./git-scan-secrets.sh [--repo <owner/repo>] [--local] [--dry-run] [--history]
+# scan-secrets.sh — Scan a Git repo for accidentally committed secrets
+# Usage: ./scan-secrets.sh [--repo <owner/repo>] [--local] [--dry-run] [--history]
 
 set -euo pipefail
 
@@ -44,16 +44,16 @@ Requirements: git, grep
 
 Examples:
   # Scan current repo working tree
-  ./git-scan-secrets.sh
+  ./scan-secrets.sh
 
   # Scan including full history
-  ./git-scan-secrets.sh --history
+  ./scan-secrets.sh --history
 
   # Scan a remote repo
-  ./git-scan-secrets.sh --repo owner/repo
+  ./scan-secrets.sh --repo owner/repo
 
   # Dry-run to see patterns
-  ./git-scan-secrets.sh --dry-run
+  ./scan-secrets.sh --dry-run
 EOF
   exit 0
 }
