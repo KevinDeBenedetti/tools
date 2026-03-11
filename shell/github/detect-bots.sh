@@ -151,9 +151,28 @@ fi
 
 echo "Scanning ${REPO_NAME} for bot commits…"
 
-BOT_LOG=$(git -C "$SCAN_DIR" log --all \
+# Commits where author name/email matches bot pattern
+AUTHOR_BOT_LOG=$(git -C "$SCAN_DIR" log --all \
   --format='%H|%an|%ae|%s' \
   | BOTPAT="$PATTERN" awk -F'|' 'tolower($2) ~ ENVIRON["BOTPAT"] || tolower($3) ~ ENVIRON["BOTPAT"]' || true)
+
+# Commits with Co-authored-by bot trailers (not already captured above)
+COAUTHOR_BOT_LOG=$(git -C "$SCAN_DIR" log --all \
+  --format='%H|%an|%ae|%s|%b' \
+  | BOTPAT="$PATTERN" awk -F'|' '
+    tolower($2) ~ ENVIRON["BOTPAT"] || tolower($3) ~ ENVIRON["BOTPAT"] { next }
+    tolower($0) ~ /co-authored-by:[^\n]*\[bot\]/ { print $1 "|" $2 "|" $3 "|" $4 " [co-author bot]" }
+  ' || true)
+
+if [[ -n "$AUTHOR_BOT_LOG" && -n "$COAUTHOR_BOT_LOG" ]]; then
+  BOT_LOG=$(printf '%s\n%s' "$AUTHOR_BOT_LOG" "$COAUTHOR_BOT_LOG")
+elif [[ -n "$AUTHOR_BOT_LOG" ]]; then
+  BOT_LOG="$AUTHOR_BOT_LOG"
+elif [[ -n "$COAUTHOR_BOT_LOG" ]]; then
+  BOT_LOG="$COAUTHOR_BOT_LOG"
+else
+  BOT_LOG=""
+fi
 
 if [[ -z "$BOT_LOG" ]]; then
   echo "No bot commits found."
@@ -219,6 +238,7 @@ if $PURGE; then
   echo "Purging bot commits…"
   # shellcheck disable=SC2016
   git -C "$SCAN_DIR" filter-repo --commit-callback '
+import re
 name  = commit.author_name.lower()
 email = commit.author_email.lower()
 patterns = [
@@ -226,8 +246,15 @@ patterns = [
     b"snyk-bot", b"imgbot", b"codecov", b"netlify", b"vercel",
     b"semantic-release-bot", b"release-please", b"[bot]",
 ]
+# Skip commits whose author is a bot
 if any(p in name or p in email for p in patterns):
     commit.skip()
+    return
+# Strip Co-authored-by trailers that reference bots
+msg = commit.message.decode("utf-8", errors="replace")
+cleaned = re.sub(r"\nCo-authored-by:[^\n]*\[bot\][^\n]*", "", msg, flags=re.IGNORECASE)
+if cleaned != msg:
+    commit.message = cleaned.rstrip().encode("utf-8") + b"\n"
 ' --force
 
   # Restore origin remote
