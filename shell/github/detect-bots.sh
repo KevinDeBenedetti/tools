@@ -275,6 +275,8 @@ if cleaned != msg:
     echo "  cd ${ABS_PATH}"
     echo "  git push --force --all"
     echo "  git push --force --tags"
+    echo "  go back to the previous directory and remove the cloned repo if desired"
+    echo "  git reset --hard origin/main"
   else
     echo "Next steps:"
     echo "  git push --force --all"
