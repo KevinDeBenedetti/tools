@@ -143,4 +143,3 @@ All tests use mocked `gh` and `jq` binaries — no real GitHub calls are made.
 - [Docker Templates](./docker/docker-templates) — stack Dockerfiles
 - [CLI App](./app/cli) — `devkit` Rust CLI usage
 - [Testing and Quality](./tests/testing-and-quality) — Bats setup and CI baseline
-- [Repository Reference](./reference) — full annotated repository structure
