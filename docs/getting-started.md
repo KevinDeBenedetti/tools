@@ -48,8 +48,8 @@ make scan-secrets ARGS="--repo owner/repo --history"
 
 ## Documentation map
 
-- [Shell Tools](./shell-tools)
-- [Makefile Fragments](./makefile-fragments)
-- [Docker Templates](./docker-templates)
+- [Shell Tools](./shell/shell-tools)
+- [Makefile Fragments](./makefiles/makefile-fragments)
+- [Docker Templates](./docker/docker-templates)
 - [CLI App](./cli)
-- [Testing and Quality](./testing-and-quality)
+- [Testing and Quality](./tests/testing-and-quality)
