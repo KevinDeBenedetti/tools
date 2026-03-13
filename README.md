@@ -21,6 +21,8 @@ This repository contains:
   - [Docker templates](#docker-templates)
   - [Rust CLI app](#rust-cli-app)
   - [Testing and quality](#testing-and-quality)
+  - [Git hooks (prek)](#git-hooks-prek)
+  - [CI/CD](#cicd)
   - [Documentation](#documentation)
 
 ## Overview
@@ -148,14 +150,46 @@ App make targets are in `app/Makefile` (build, run, check, fmt, clippy, test, re
 
 Tests use Bats and supporting assertion helpers vendored under `tests/test_helper/`.
 
+All Bats tests mock `gh` and `jq` binaries — no real GitHub calls are made during the test suite.
+
+## Git hooks (prek)
+
+Quality gates are enforced with [prek](https://prek.j178.dev), configured in `prek.toml`.
+
+Install hooks once after cloning:
+
+```bash
+brew install j178/tap/prek
+prek install
+```
+
+Pre-commit checks: trailing whitespace, end-of-file, YAML validation, shellcheck (`--severity=warning`), yamllint.
+
+Run all checks manually:
+
+```bash
+prek run --all-files
+```
+
+## CI/CD
+
+Push and PR events trigger the reusable pipeline from `KevinDeBenedetti/github-workflows`:
+
+| Job        | Steps                                                 |
+| ---------- | ----------------------------------------------------- |
+| `ci`       | ShellCheck, actionlint, Bats tests                    |
+| `security` | Secret scanning (gitleaks/trufflehog)                 |
+| `dispatch` | Triggers docs rebuild on `kevindebenedetti.github.io` |
+
 ## Documentation
 
 Detailed docs are available in `docs/`:
 
-- `docs/index.md`
-- `docs/getting-started.md`
-- `docs/shell-tools.md`
-- `docs/makefile-fragments.md`
-- `docs/docker-templates.md`
-- `docs/cli.md`
-- `docs/testing-and-quality.md`
+- `docs/index.md` — overview and navigation hub
+- `docs/getting-started.md` — prerequisites, auth setup, first commands
+- `docs/reference.md` — full annotated repository structure
+- `docs/shell/shell-tools.md` — complete flag reference for every script
+- `docs/makefiles/makefile-fragments.md` — how to use Vue, Nuxt, and FastAPI fragments
+- `docs/docker/docker-templates.md` — stack Dockerfile usage and recommendations
+- `docs/app/cli.md` — `devkit` Rust CLI reference
+- `docs/tests/testing-and-quality.md` — Bats test suite and CI baseline
