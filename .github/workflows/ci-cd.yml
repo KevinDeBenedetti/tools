@@ -21,6 +21,8 @@ jobs:
       bats-tests-dir: tests/github/
       bats-submodules: true
       run-docker: false
+      run-link-check: true
+      link-check-paths: 'docs/**/*.md'
 
   security:
     needs: ci
