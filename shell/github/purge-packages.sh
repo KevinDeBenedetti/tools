@@ -274,8 +274,6 @@ process_package_type() {
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-TOTAL_DELETED=0
-
 set_base_paths
 
 if [[ -n "$PACKAGE_TYPE" ]]; then

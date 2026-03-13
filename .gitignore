@@ -1,0 +1,3 @@
+# prek / pre-commit hook cache
+.prek/
+.pre-commit-config.yaml
