@@ -19,7 +19,7 @@ Reusable tooling for GitHub maintenance, project scaffolding, and stack-specific
 - [Shell Tools](./shell/shell-tools)
 - [Makefile Fragments](./makefiles/makefile-fragments)
 - [Docker Templates](./docker/docker-templates)
-- [CLI App](./cli)
+- [CLI App](./app/cli)
 - [Testing and Quality](./tests/testing-and-quality)
 
 ## Intended audience
