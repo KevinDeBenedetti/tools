@@ -36,3 +36,12 @@ jobs:
       run-secret-scan: true
       run-codeql: false
     secrets: inherit
+
+  # ── Dispatch docs rebuild ──────────────────────────────────────────────────
+  dispatch:
+    name: Dispatch docs rebuild
+    needs: [ci, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: KevinDeBenedetti/github-workflows/.github/workflows/dispatch-docs.yml@main
+    secrets:
+      dispatch-token: ${{ secrets.PAGES_DISPATCH_TOKEN }}
