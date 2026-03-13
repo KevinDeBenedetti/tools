@@ -1,0 +1,7 @@
+{
+  "title": "Tools",
+  "description": "Reusable GitHub automation scripts, stack makefile fragments, Docker templates, and a Rust CLI for developer workflows.",
+  "icon": "🛠️",
+  "order": 4,
+  "repo": "KevinDeBenedetti/tools"
+}
