@@ -22,15 +22,16 @@ help: ## Show available commands
 #   make clean-repo ARGS="--dry-run"
 #   make backup-repos
 
-SCRIPTS := purge-actions purge-release purge-tags \
+SCRIPTS := purge-actions purge-packages purge-release purge-tags \
            backup-repos clean-repo detect-bots \
            maintain-all scan-secrets
 
 .PHONY: $(SCRIPTS)
 
-purge-actions: ## Purge GitHub Actions workflow runs
-purge-release: ## Purge GitHub releases
-purge-tags:    ## Purge GitHub tags
+purge-actions:   ## Purge GitHub Actions workflow runs
+purge-packages:  ## Purge GitHub package versions
+purge-release:   ## Purge GitHub releases
+purge-tags:      ## Purge GitHub tags
 backup-repos:  ## Backup all GitHub repos as bare mirrors
 clean-repo:    ## Clean unwanted files from Git history
 detect-bots:   ## Detect bot commits in a Git repo
