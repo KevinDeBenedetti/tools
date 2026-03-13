@@ -15,8 +15,8 @@ jobs:
       run-shellcheck: true
       shellcheck-severity: warning
       shellcheck-exclude-paths: '*/test_helper/*'
-      run-yamllint: true
-      yamllint-paths: .github/workflows/
+      run-actionlint: true
+      actionlint-paths: .github/workflows/
       run-bats: true
       bats-tests-dir: tests/github/
       bats-submodules: true
