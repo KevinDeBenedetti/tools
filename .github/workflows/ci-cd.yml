@@ -22,7 +22,7 @@ jobs:
       bats-submodules: true
       run-docker: false
       run-link-check: true
-      link-check-paths: 'docs/**/*.md'
+      link-check-paths: 'docs/'
 
   security:
     needs: ci
