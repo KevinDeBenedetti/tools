@@ -2,119 +2,50 @@
 
 Reusable tooling for GitHub maintenance, project bootstrapping, and stack-specific developer workflows.
 
-This repository groups four kinds of assets:
+<div align="center">
 
-- GitHub automation scripts for cleanup, hygiene, and security checks
-- reusable `make` fragments for Vue, Nuxt, and FastAPI projects
-- Docker templates for supported stacks
-- a Rust CLI/TUI (`devkit`) to apply stack templates quickly
+[![Documentation](https://img.shields.io/badge/Documentation-online-blue?style=for-the-badge&logo=gitbook)](https://kevindebenedetti.github.io/tools/)
+[![Getting Started](https://img.shields.io/badge/Getting%20Started-guide-green?style=for-the-badge)](https://kevindebenedetti.github.io/tools/getting-started)
 
-## What this repo is for
+</div>
 
-Use this repository when you want to:
+## What's inside
 
-- clean up GitHub Actions runs, packages, releases, or tags
-- scan repositories for potential secrets
-- detect bot-generated commits before cleaning history
-- standardize project commands across Vue, Nuxt, or FastAPI repos
-- start from opinionated Docker baselines
-- apply stack configuration through the `devkit` CLI
-
-## How to use it
-
-### 1. Run maintenance scripts
-
-Most day-to-day usage starts from the root `Makefile`, which forwards flags through `ARGS`:
-
-```bash
-make help
-make purge-actions ARGS="--repo owner/repo --dry-run"
-make purge-packages ARGS="--owner your-user --package-type container --dry-run"
-make scan-secrets ARGS="--repo owner/repo --history"
-```
-
-The backing scripts live in `shell/github/` and can also be called directly with `--help`.
-
-### 2. Reuse the Makefile fragments
-
-The `makefiles/` directory contains reusable fragments for:
-
-- `vue.mk`
-- `nuxt.mk`
-- `fastapi.mk`
-
-Typical integration:
-
-```makefile
-JS_PKG_MANAGER := pnpm
-VUE_DIR := .
-DOCKER := false
-
-include path/to/tools/makefiles/vue.mk
-```
-
-### 3. Start from Docker templates
-
-Use `docker/fastapi/`, `docker/nuxt/`, and `docker/vue/` as baseline container templates for supported stacks.
-
-### 4. Use the Rust app
-
-The `app/` directory contains `devkit`, a Rust CLI/TUI that supports:
-
-- `init` for the interactive TUI flow
-- `config` to apply one or more stack configs directly
-- `list` to print available stacks
-
-## Repository layout
-
-```text
-tools/
-├── app/          # Rust CLI/TUI
-├── docker/       # Docker templates by stack
-├── docs/         # Extended documentation
-├── makefiles/    # Reusable make fragments
-├── shell/        # Shell automation
-└── tests/        # Bats test suite
-```
+| Directory | Purpose |
+|-----------|---------|
+| `shell/` | GitHub automation scripts — cleanup, hygiene, and security scans |
+| `makefiles/` | Reusable `make` fragments for Vue, Nuxt, and FastAPI |
+| `docker/` | Docker templates by stack |
+| `app/` | `devkit` — Rust CLI/TUI to apply stack templates |
 
 ## Quick start
 
-Prerequisites:
-
-- `bash`
-- `make`
-- `gh`
-- `jq`
-- `docker` when using container workflows
-- `bats` and `shellcheck` when running tests and linting
-- `cargo`/`rustup` when building `app/`
-
-Common commands:
-
 ```bash
-make help
-make test
-make lint
+make help    # list all available targets
+make test    # run the Bats test suite
+make lint    # run ShellCheck
 ```
+
+Prerequisites: `bash`, `make`, `gh`, `jq` — see the [Getting Started guide](https://kevindebenedetti.github.io/tools/getting-started) for full setup.
 
 ## Documentation
 
-Start with [`docs/index.md`](docs/index.md), then use the section that matches your workflow:
+Full reference is available at **[kevindebenedetti.github.io/tools](https://kevindebenedetti.github.io/tools/)**.
 
-- [`docs/getting-started.md`](docs/getting-started.md) — prerequisites, GitHub auth, first commands
-- [`docs/shell/shell-tools.md`](docs/shell/shell-tools.md) — full shell script reference
-- [`docs/makefiles/makefile-fragments.md`](docs/makefiles/makefile-fragments.md) — Vue, Nuxt, and FastAPI fragments
-- [`docs/docker/docker-templates.md`](docs/docker/docker-templates.md) — Docker template usage
-- [`docs/app/cli.md`](docs/app/cli.md) — `devkit` CLI/TUI reference
-- [`docs/tests/testing-and-quality.md`](docs/tests/testing-and-quality.md) — Bats, ShellCheck, and CI notes
+| Section | Topic |
+|---------|-------|
+| [Getting Started](https://kevindebenedetti.github.io/tools/getting-started) | Prerequisites, GitHub auth, first commands |
+| [Shell Tools](https://kevindebenedetti.github.io/tools/shell/shell-tools) | Full shell script reference |
+| [Makefile Fragments](https://kevindebenedetti.github.io/tools/makefiles/makefile-fragments) | Vue, Nuxt, and FastAPI fragments |
+| [Docker Templates](https://kevindebenedetti.github.io/tools/docker/docker-templates) | Docker template usage |
+| [devkit CLI](https://kevindebenedetti.github.io/tools/app/cli) | `devkit` CLI/TUI reference |
+| [Testing & Quality](https://kevindebenedetti.github.io/tools/tests/testing-and-quality) | Bats, ShellCheck, and CI notes |
 
 ## Safety
 
-Several maintenance commands delete remote resources. Start with `--dry-run` whenever available, then rerun without it only after reviewing the target set.
-
-Examples:
+Commands that delete remote resources support `--dry-run`. Always run it first:
 
 ```bash
+make purge-actions ARGS="--repo owner/repo --dry-run"
 make purge-release ARGS="--repo owner/repo --keep-latest 3 --dry-run"
-make purge-tags ARGS="--repo owner/repo --tag-pattern 'v0.*' --dry-run"
 ```
