@@ -41,14 +41,6 @@ hooks = [
   },
 ]
 
-# ─── YAML linting ───────────────────────────────────────────────────────────
-[[repos]]
-repo = "https://github.com/adrienverge/yamllint"
-rev = "v1.37.0"
-hooks = [
-  { id = "yamllint", args = ["--config-file", ".yamllint.yml"] },
-]
-
 # ─── GitHub Actions workflow linting ────────────────────────────────────────
 [[repos]]
 repo = "https://github.com/rhysd/actionlint"

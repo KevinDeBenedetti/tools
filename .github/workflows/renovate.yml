@@ -1,0 +1,11 @@
+name: Renovate
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'  # Every Monday at 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  renovate:
+    uses: KevinDeBenedetti/github-workflows/.github/workflows/renovate.yml@main
+    secrets: inherit

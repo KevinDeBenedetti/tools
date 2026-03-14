@@ -110,4 +110,4 @@ Before saving, confirm:
 - [ ] No task-specific instructions (no "implement feature X" language).
 - [ ] All six make scripts (`purge-actions`, `purge-packages`, `purge-release`,
       `purge-tags`, `backup-repos`, `clean-repo`, `detect-bots`, `maintain-all`,
-      `scan-secrets`) are listed with their purpose. 
+      `scan-secrets`) are listed with their purpose.

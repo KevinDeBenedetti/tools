@@ -392,4 +392,3 @@ MOCK
   assert_output --partial "deleting entire package"
   assert_output --partial "Package 'myapp' deleted entirely"
 }
-
