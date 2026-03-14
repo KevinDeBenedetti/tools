@@ -15,12 +15,12 @@ Reusable tooling for GitHub maintenance, project scaffolding, and stack-specific
 
 ## Start here
 
-- [Getting Started](./getting-started)
-- [Shell Tools](./shell/shell-tools)
-- [Makefile Fragments](./makefiles/makefile-fragments)
-- [Docker Templates](./docker/docker-templates)
-- [CLI App](./app/cli)
-- [Testing and Quality](./tests/testing-and-quality)
+- [Getting Started](./getting-started.md)
+- [Shell Tools](./shell/shell-tools.md)
+- [Makefile Fragments](./makefiles/makefile-fragments.md)
+- [Docker Templates](./docker/docker-templates.md)
+- [CLI App](./app/cli.md)
+- [Testing and Quality](./tests/testing-and-quality.md)
 
 ## Intended audience
 

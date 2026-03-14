@@ -138,8 +138,8 @@ All tests use mocked `gh` and `jq` binaries — no real GitHub calls are made.
 
 ## Documentation map
 
-- [Shell Tools](./shell/shell-tools) — full flag reference for every script
-- [Makefile Fragments](./makefiles/makefile-fragments) — Vue, Nuxt, FastAPI fragments
-- [Docker Templates](./docker/docker-templates) — stack Dockerfiles
-- [CLI App](./app/cli) — `devkit` Rust CLI usage
-- [Testing and Quality](./tests/testing-and-quality) — Bats setup and CI baseline
+- [Shell Tools](./shell/shell-tools.md) — full flag reference for every script
+- [Makefile Fragments](./makefiles/makefile-fragments.md) — Vue, Nuxt, FastAPI fragments
+- [Docker Templates](./docker/docker-templates.md) — stack Dockerfiles
+- [CLI App](./app/cli.md) — `devkit` Rust CLI usage
+- [Testing and Quality](./tests/testing-and-quality.md) — Bats setup and CI baseline
