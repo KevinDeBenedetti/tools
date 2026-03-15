@@ -22,7 +22,7 @@ jobs:
       bats-submodules: true
       run-docker: false
       run-link-check: true
-      link-check-paths: 'docs/'
+      link-check-paths: 'docs/**/*.md'
 
   security:
     needs: ci
@@ -53,4 +53,4 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: KevinDeBenedetti/github-workflows/.github/workflows/dispatch-docs.yml@main
     secrets:
-      dispatch-token: ${{ secrets.PAGES_DISPATCH_TOKEN }}
+      PAT_TOKEN: ${{ secrets.PAGES_DISPATCH_TOKEN }}

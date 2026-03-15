@@ -104,10 +104,10 @@ Produce `.github/copilot-instructions.md` structured as follows:
 
 Before saving, confirm:
 
-- [ ] Every command in the file runs without error (or the error is documented).
-- [ ] No invented paths, targets, or tool flags.
-- [ ] File is ≤ 150 lines.
-- [ ] No task-specific instructions (no "implement feature X" language).
-- [ ] All six make scripts (`purge-actions`, `purge-packages`, `purge-release`,
+- Every command in the file runs without error (or the error is documented).
+- No invented paths, targets, or tool flags.
+- File is ≤ 150 lines.
+- No task-specific instructions (no "implement feature X" language).
+- All six make scripts (`purge-actions`, `purge-packages`, `purge-release`,
       `purge-tags`, `backup-repos`, `clean-repo`, `detect-bots`, `maintain-all`,
       `scan-secrets`) are listed with their purpose.
