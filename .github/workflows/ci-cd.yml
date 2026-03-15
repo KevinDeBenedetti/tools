@@ -53,4 +53,4 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: KevinDeBenedetti/github-workflows/.github/workflows/dispatch-docs.yml@main
     secrets:
-      PAT_TOKEN: ${{ secrets.PAGES_DISPATCH_TOKEN }}
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
