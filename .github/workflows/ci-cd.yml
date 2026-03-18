@@ -2,28 +2,27 @@ name: CI / CD
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   ci:
     uses: KevinDeBenedetti/github-workflows/.github/workflows/ci-node.yml@main
-
-  ci-docs:
-    uses: KevinDeBenedetti/github-workflows/.github/workflows/ci-docs.yml@main
     with:
+      run-link-check: true
       link-check-paths: 'docs/**/*.md'
 
   security:
-    needs: [ci, ci-docs]
+    needs: [ci]
     permissions:
       security-events: write
       actions: read
       contents: read
-      pull-requests: read
     uses: KevinDeBenedetti/github-workflows/.github/workflows/security.yml@main
     with:
       run-node-audit: true
@@ -34,14 +33,11 @@ jobs:
 
   bot-check:
     if: github.event_name == 'pull_request'
-    permissions:
-      contents: read
-      pull-requests: read
     uses: KevinDeBenedetti/github-workflows/.github/workflows/check-bot-commits.yml@main
 
   dispatch:
     name: Dispatch docs rebuild
-    needs: [ci, ci-docs, security]
+    needs: [ci, security]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: KevinDeBenedetti/github-workflows/.github/workflows/dispatch-docs.yml@main
     secrets:
