@@ -28,6 +28,7 @@ jobs:
       run-node-audit: true
       run-python-audit: false
       run-secret-scan: true
+      # CodeQL disabled: No TypeScript/JavaScript SAST needed for tools management (use linter + typecheck)
       run-codeql: false
     secrets: inherit
 
@@ -39,5 +40,5 @@ jobs:
     name: Dispatch docs rebuild
     needs: [ci, security]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: KevinDeBenedetti/github-workflows/.github/workflows/dispatch-docs.yml@main
+    uses: KevinDeBenedetti/github-workflows/.github/workflows/cd-docs.yml@main
     secrets: inherit
