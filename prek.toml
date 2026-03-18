@@ -1,76 +1,51 @@
-# =============================================================================
-# prek.toml — git hook configuration (https://prek.j178.dev)
-# prek is a faster, dependency-free alternative to pre-commit (written in Rust)
-#
-# Install prek:   brew install j178/tap/prek
-# Install hooks:  prek install       (run once after cloning)
-# Run all:        prek run --all-files
-# Run staged:     prek run
-# Update revs:    prek autoupdate
-# =============================================================================
+#:schema https://www.schemastore.org/prek.json
+# prek — Rust-native pre-commit hook runner (https://prek.j178.dev)
+# Install hooks: bunx prek install
+# Run manually:  bunx prek run --all-files
 
-minimum_prek_version = "0.3.0"
-fail_fast = false
-default_install_hook_types = ["pre-commit", "pre-push"]
-
-# ─── General file hygiene ───────────────────────────────────────────────────
+# ── Built-in hooks (Rust-native, zero setup) ──────────────────────────────────
 [[repos]]
-repo = "https://github.com/pre-commit/pre-commit-hooks"
-# renovate: datasource=github-tags depName=pre-commit/pre-commit-hooks
-rev = "v5.0.0"
+repo = "builtin"
 hooks = [
-  { id = "trailing-whitespace", args = ["--markdown-linebreak-ext=md"] },
+  { id = "trailing-whitespace" },
   { id = "end-of-file-fixer" },
-  { id = "check-yaml" },
-  { id = "check-merge-conflict" },
-  { id = "check-executables-have-shebangs" },
-  { id = "check-shebang-scripts-are-executable" },
-  { id = "detect-private-key" },
-  { id = "mixed-line-ending", args = ["--fix=lf"] },
+  { id = "check-added-large-files", args = ["--maxkb=500"] },
 ]
 
-# ─── Shell script linting ───────────────────────────────────────────────────
-[[repos]]
-repo = "https://github.com/shellcheck-py/shellcheck-py"
-# renovate: datasource=github-tags depName=shellcheck-py/shellcheck-py
-rev = "v0.10.0.1"
-hooks = [
-  {
-    id = "shellcheck",
-    args = ["--severity=warning", "--shell=bash"],
-    files = "\\.sh$",
-    exclude = "tests/test_helper/",
-  },
-]
-
-# ─── GitHub Actions workflow linting ────────────────────────────────────────
-[[repos]]
-repo = "https://github.com/rhysd/actionlint"
-# renovate: datasource=github-tags depName=rhysd/actionlint
-rev = "v1.7.10"
-hooks = [
-  { id = "actionlint" },
-]
-
-# ─── Docs link safety ────────────────────────────────────────────────────────
-[[repos]]
-repo = "https://github.com/KevinDeBenedetti/github-workflows"
-rev = "c91bedb2d28c23f8e4e42f49393ad5d2857b76c0"
-hooks = [
-  { id = "check-docs-links" },
-]
-
-# ─── Local hooks ────────────────────────────────────────────────────────────
+# ── Local hooks (run bun/oxlint/oxfmt via system PATH) ────────────────────────
 [[repos]]
 repo = "local"
 
 [[repos.hooks]]
-id = "bats"
-name = "BATS — unit tests"
-# Runs the offline test suite before every push.
-# Install bats: brew install bats-core
+id = "format"
+name = "Format check (oxfmt)"
+entry = "bun run format:check"
 language = "system"
-entry = "bash -c 'which bats >/dev/null 2>&1 && bats tests/github/ || echo \"⚠️  bats not installed — skipping (brew install bats-core)\"'"
 pass_filenames = false
-always_run = true
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "lint"
+name = "Lint (oxlint)"
+entry = "bun run lint"
+language = "system"
+pass_filenames = false
+stages = ["pre-commit"]
+
+[[repos.hooks]]
+id = "typecheck"
+name = "TypeScript typecheck"
+entry = "bash"
+args = ["-c", "bun run github:typecheck && bun run todo:typecheck && bun x tsc --noEmit -p tsconfig.cli.json"]
+language = "system"
+pass_filenames = false
+stages = ["pre-push"]
+
+[[repos.hooks]]
+id = "test"
+name = "Tests (bun)"
+entry = "bun"
+args = ["test", "src/tests/", "src/cli/"]
+language = "system"
+pass_filenames = false
 stages = ["pre-push"]

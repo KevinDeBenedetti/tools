@@ -1,0 +1,53 @@
+name: GitHub Tools
+description: 'Run GitHub utility tools (detect-bots, purge-actions, purge-packages, purge-release, purge-tags, scan-secrets)'
+
+inputs:
+  tool:
+    required: true
+    description: 'detect-bots | purge-actions | purge-packages | purge-release | purge-tags | scan-secrets'
+  repo:
+    required: false
+    description: 'GitHub repository in owner/repo format (defaults to current repo)'
+  options:
+    required: false
+    description: 'Extra CLI flags passed to the tool (e.g. "--dry-run --older-than 30d")'
+    default: ''
+  dry-run:
+    required: false
+    description: 'Preview actions without making changes'
+    default: 'false'
+
+outputs:
+  result:
+    description: 'JSON output from the tool'
+    value: ${{ steps.run.outputs.result }}
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Install dependencies
+      shell: bash
+      run: bun install --frozen-lockfile
+      working-directory: ${{ github.action_path }}
+
+    - name: Run GitHub tool
+      id: run
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        REPO="${{ inputs.repo || github.repository }}"
+        DRY_RUN_FLAG=""
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          DRY_RUN_FLAG="--dry-run"
+        fi
+        bun run src/github/cli.ts ${{ inputs.tool }} \
+          --repo "$REPO" \
+          $DRY_RUN_FLAG \
+          ${{ inputs.options }}

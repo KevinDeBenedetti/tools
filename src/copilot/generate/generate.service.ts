@@ -1,0 +1,57 @@
+import type { ICopilotClient, IGitHubClient } from "../../shared/types/copilot";
+import type { GenerateInput } from "./generate.schema";
+
+const TYPE_PROMPTS: Record<string, string> = {
+  tests:
+    "Generate comprehensive unit tests for the code. Follow testing best practices: AAA pattern, edge cases, mocks for external deps. Return only the test code.",
+  docs: "Generate clear documentation including: purpose, parameters, return values, and usage examples. Return Markdown.",
+  changelog:
+    "Generate a human-friendly changelog entry from the PR diff following Keep a Changelog format. Return Markdown.",
+  summary:
+    "Summarize the changes in this pull request in a concise, non-technical way suitable for a release note. Return Markdown.",
+};
+
+const SYSTEM_PROMPT =
+  "You are an expert software engineer assisting with code generation tasks. Follow the exact instructions and return only the requested output.";
+
+export class GenerateService {
+  constructor(
+    private readonly copilot: ICopilotClient,
+    private readonly github: IGitHubClient,
+  ) {}
+
+  async generate(
+    repo: { owner: string; repo: string },
+    prNumber: number | undefined,
+    opts: GenerateInput,
+  ): Promise<string> {
+    let context = "";
+
+    if (prNumber) {
+      context = await this.github.getPRDiff(repo.owner, repo.repo, prNumber);
+    } else if (opts.filePath) {
+      context = await this.github.getFileContent(
+        repo.owner,
+        repo.repo,
+        opts.filePath,
+      );
+    }
+
+    const typePrompt =
+      TYPE_PROMPTS[opts.type] ??
+      TYPE_PROMPTS["summary"] ??
+      "Summarize the changes.";
+    const extra = opts.instructions
+      ? `\n\nAdditional instructions: ${opts.instructions}`
+      : "";
+    const formatHint =
+      opts.format === "markdown" ? "" : `\n\nOutput format: ${opts.format}`;
+
+    const systemPrompt = `${SYSTEM_PROMPT}\n\nTask: ${typePrompt}${extra}${formatHint}`;
+
+    return this.copilot.complete(
+      systemPrompt,
+      context || "No code context provided.",
+    );
+  }
+}

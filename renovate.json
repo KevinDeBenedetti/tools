@@ -1,4 +1,0 @@
-{
-  "$schema": "https://docs.renovatebot.com/configuration-options.json",
-  "extends": ["github>KevinDeBenedetti/github-workflows"]
-}

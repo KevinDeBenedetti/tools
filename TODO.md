@@ -1,31 +1,18 @@
 ## Backlogs
 
-### TODO FEAT(copilot): Generate an issue from title + description
+## HIGH PRIORITY
 
-- [ ] Add a button to generate an issue from the title and description of the project
-- [ ] Use issue templates from the `.github` repo
-- [ ] Use the GitHub API to create the issue in the official repository
-- [ ] Verify and test
+- [ ] FEAT - github/src to creat with the code for TODO.yml with github actions to generate issues, analyze failed actions, and generate pull requests.
+> Test locally to test the code / logic / add graphs
 
-### TODO FEAT(copilot): Analyze & generate a solution for a failed action
+- [ ] FEAT - copilot/ generate docs for every commits / add in pre commits first => try in ci to generate docs on push to main
 
-- [ ] Add a button to analyze the failed action and generate a solution
-- [ ] Use the GitHub API to get the logs of the failed action
-- [ ] Use Copilot to analyze the logs and generate a solution
-- [ ] Verify and test
+- [ ] FEAT - Generat scripts from shell/github with typescript
 
-### TODO FEAT(copilot): Generate a pull request from an event
+## MEDIUM PRIORITY
 
-- [ ] Add a button to generate a pull request from an event (e.g. an issue, a failed action, etc.)
-- [ ] Use the GitHub API to create the pull request in the official repository
-- [ ] Use Copilot to generate the pull request description and code changes
-- [ ] Verify and test
+- [ ] FEAT - copilot/ generate a solution for a failed action / add a button to analyze the failed action and generate a solution
 
-### TODO Cron GitHub Action
+- [ ] FEAT - github/ generate a pull request from an event / add a button to generate a pull request from an event (e.g. an issue, a failed action, etc.)
 
-- [ ] Purge old GH Actions every 24h — delete runs older than 30 days
-- [ ] Purge old GH Pages deployments every 24h — delete deployments older than 30 days
-
----
-
-## In Progress
+- [ ] FEAT - github/ Cron GitHub Action to purge old GH Actions and GH Pages deployments every 24h
