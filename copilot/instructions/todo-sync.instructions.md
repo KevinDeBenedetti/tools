@@ -61,8 +61,8 @@ issues:
       - [ ] …
 ```
 
-**`type` values** — `feat` · `fix` · `refactor` · `chore` · `doc` · `security`  
-**`status` values** — `backlog` · `in-progress` · `to-review` · `done`  
+**`type` values** — `feat` · `fix` · `refactor` · `chore` · `doc` · `security`
+**`status` values** — `backlog` · `in-progress` · `to-review` · `done`
 **`priority` values** — `high` · `medium` · `low`
 
 #### `.github/workflows/todo-sync.yml`

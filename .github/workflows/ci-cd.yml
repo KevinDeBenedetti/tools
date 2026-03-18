@@ -1,4 +1,4 @@
-name: CI - CD
+name: CI / CD
 
 on:
   push:
@@ -10,22 +10,15 @@ on:
 
 jobs:
   ci:
-    uses: KevinDeBenedetti/github-workflows/.github/workflows/ci-shell.yml@main
+    uses: KevinDeBenedetti/github-workflows/.github/workflows/ci-node.yml@main
+
+  ci-docs:
+    uses: KevinDeBenedetti/github-workflows/.github/workflows/ci-docs.yml@main
     with:
-      run-shellcheck: true
-      shellcheck-severity: warning
-      shellcheck-exclude-paths: '*/test_helper/*'
-      run-actionlint: true
-      actionlint-paths: .github/workflows/
-      run-bats: true
-      bats-tests-dir: tests/github/
-      bats-submodules: true
-      run-docker: false
-      run-link-check: true
       link-check-paths: 'docs/**/*.md'
 
   security:
-    needs: ci
+    needs: [ci, ci-docs]
     permissions:
       security-events: write
       actions: read
@@ -33,7 +26,7 @@ jobs:
       pull-requests: read
     uses: KevinDeBenedetti/github-workflows/.github/workflows/security.yml@main
     with:
-      run-node-audit: false
+      run-node-audit: true
       run-python-audit: false
       run-secret-scan: true
       run-codeql: false
@@ -41,15 +34,14 @@ jobs:
 
   bot-check:
     if: github.event_name == 'pull_request'
-    uses: KevinDeBenedetti/github-workflows/.github/workflows/check-bot-commits.yml@main
     permissions:
       contents: read
       pull-requests: read
+    uses: KevinDeBenedetti/github-workflows/.github/workflows/check-bot-commits.yml@main
 
-  # ── Dispatch docs rebuild ──────────────────────────────────────────────────
   dispatch:
     name: Dispatch docs rebuild
-    needs: [ci, security]
+    needs: [ci, ci-docs, security]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: KevinDeBenedetti/github-workflows/.github/workflows/dispatch-docs.yml@main
     secrets:
