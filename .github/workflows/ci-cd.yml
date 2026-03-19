@@ -15,7 +15,7 @@ jobs:
     uses: KevinDeBenedetti/github-workflows/.github/workflows/ci-node.yml@main
     with:
       run-link-check: true
-      link-check-paths: 'docs/**/*.md'
+      link-check-paths: 'docs/'
 
   security:
     needs: [ci]
