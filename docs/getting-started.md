@@ -138,8 +138,10 @@ All tests use mocked `gh` and `jq` binaries — no real GitHub calls are made.
 
 ## Documentation map
 
-- [Shell Tools](./shell/shell-tools.md) — full flag reference for every script
 - [Makefile Fragments](./makefiles/makefile-fragments.md) — Vue, Nuxt, FastAPI fragments
 - [Docker Templates](./docker/docker-templates.md) — stack Dockerfiles
-- [CLI App](./app/cli.md) — `devkit` Rust CLI usage
-- [Testing and Quality](./tests/testing-and-quality.md) — Bats setup and CI baseline
+- [GitHub — Purge](./github/purge.md) — purge actions, packages, releases, tags
+- [GitHub — Bot Detection](./github/bot.md) — detect and remove bot commits
+- [GitHub — Secrets](./github/secrets.md) — scan for secrets in history
+- [Copilot SDK](./copilot/copilot-sdk.md) — Copilot extension SDK usage
+- [Copilot Instructions](./copilot/instructions.md) — writing Copilot instructions
