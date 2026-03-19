@@ -2,11 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  ScanSecretsOptionsSchema,
-  type SecretMatch,
-  type SecretScanResult,
-} from "../types";
+import { ScanSecretsOptionsSchema, type SecretMatch, type SecretScanResult } from "../types";
 import { formatError } from "../shared";
 
 const DEFAULT_SECRET_PATTERNS = [
@@ -85,10 +81,7 @@ export class ScanSecretsService {
       "",
       ...result.secrets
         .slice(0, 20)
-        .map(
-          (secret) =>
-            `${secret.file}:${secret.line} [${secret.pattern}] ${secret.match}`,
-        ),
+        .map((secret) => `${secret.file}:${secret.line} [${secret.pattern}] ${secret.match}`),
     ];
 
     if (result.secrets.length > 20) {
@@ -101,10 +94,7 @@ export class ScanSecretsService {
   private resolveTarget(): ScanTarget {
     if (this.options.repo && !this.options.local) {
       const cleanupPath = mkdtempSync(join(tmpdir(), "scan-secrets-"));
-      const repoPath = join(
-        cleanupPath,
-        this.options.repo.split("/")[1] ?? "repo",
-      );
+      const repoPath = join(cleanupPath, this.options.repo.split("/")[1] ?? "repo");
 
       execFileSync("gh", ["repo", "clone", this.options.repo, repoPath], {
         encoding: "utf8",
@@ -137,13 +127,7 @@ export class ScanSecretsService {
     const matches: SecretMatch[] = [];
 
     for (const pattern of this.getPatterns()) {
-      const output = this.runGitSearch(repoPath, [
-        "grep",
-        "-nE",
-        pattern.expression,
-        "--",
-        ".",
-      ]);
+      const output = this.runGitSearch(repoPath, ["grep", "-nE", pattern.expression, "--", "."]);
       matches.push(...this.parseMatches(output, pattern.name));
     }
 

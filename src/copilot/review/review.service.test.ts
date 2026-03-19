@@ -34,17 +34,11 @@ class FakeGitHubClient implements IGitHubClient {
 describe("ReviewService", () => {
   test("parses valid review comments", async () => {
     const service = new ReviewService(
-      new FakeCopilotClient(
-        '[{"path":"src/index.ts","line":12,"body":"Fix this"}]',
-      ),
+      new FakeCopilotClient('[{"path":"src/index.ts","line":12,"body":"Fix this"}]'),
       new FakeGitHubClient(),
     );
 
-    const comments = await service.reviewPR(
-      { owner: "octo", repo: "tools" },
-      1,
-      {},
-    );
+    const comments = await service.reviewPR({ owner: "octo", repo: "tools" }, 1, {});
 
     expect(comments).toHaveLength(1);
     expect(comments[0]).toEqual({
@@ -55,13 +49,10 @@ describe("ReviewService", () => {
   });
 
   test("throws when Copilot returns invalid JSON", async () => {
-    const service = new ReviewService(
-      new FakeCopilotClient("not-json"),
-      new FakeGitHubClient(),
-    );
+    const service = new ReviewService(new FakeCopilotClient("not-json"), new FakeGitHubClient());
 
-    await expect(
-      service.reviewPR({ owner: "octo", repo: "tools" }, 1, {}),
-    ).rejects.toBeInstanceOf(ValidationError);
+    await expect(service.reviewPR({ owner: "octo", repo: "tools" }, 1, {})).rejects.toBeInstanceOf(
+      ValidationError,
+    );
   });
 });

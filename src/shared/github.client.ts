@@ -14,11 +14,7 @@ export class GitHubClient implements IGitHubClient {
     this.octokit = githubActions.getOctokit(token);
   }
 
-  async getPRFiles(
-    owner: string,
-    repo: string,
-    prNumber: number,
-  ): Promise<IPRFile[]> {
+  async getPRFiles(owner: string, repo: string, prNumber: number): Promise<IPRFile[]> {
     try {
       const { data } = await this.octokit.rest.pulls.listFiles({
         owner,
@@ -38,11 +34,7 @@ export class GitHubClient implements IGitHubClient {
     }
   }
 
-  async getPRDiff(
-    owner: string,
-    repo: string,
-    prNumber: number,
-  ): Promise<string> {
+  async getPRDiff(owner: string, repo: string, prNumber: number): Promise<string> {
     try {
       const files = await this.getPRFiles(owner, repo, prNumber);
       return files
@@ -81,12 +73,7 @@ export class GitHubClient implements IGitHubClient {
     }
   }
 
-  async getFileContent(
-    owner: string,
-    repo: string,
-    path: string,
-    ref?: string,
-  ): Promise<string> {
+  async getFileContent(owner: string, repo: string, path: string, ref?: string): Promise<string> {
     try {
       const { data } = await this.octokit.rest.repos.getContent({
         owner,
@@ -100,10 +87,7 @@ export class GitHubClient implements IGitHubClient {
       return Buffer.from(data.content, "base64").toString("utf8");
     } catch (error) {
       if (error instanceof GitHubError) throw error;
-      throw new GitHubError(
-        `Failed to get file content: ${String(error)}`,
-        error,
-      );
+      throw new GitHubError(`Failed to get file content: ${String(error)}`, error);
     }
   }
 }

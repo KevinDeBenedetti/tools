@@ -20,10 +20,8 @@ const SCOPE_DESCRIPTIONS: Record<string, string> = {
   all: "Perform a comprehensive audit covering dependencies, secrets, and licenses.",
   dependencies:
     "Check for known vulnerabilities in dependencies (CVEs, outdated packages, supply-chain risks).",
-  licenses:
-    "Identify license compatibility issues and GPL/copyleft contamination.",
-  secrets:
-    "Scan for accidentally committed secrets, tokens, API keys, or credentials.",
+  licenses: "Identify license compatibility issues and GPL/copyleft contamination.",
+  secrets: "Scan for accidentally committed secrets, tokens, API keys, or credentials.",
 };
 
 const SYSTEM_PROMPT = `
@@ -78,11 +76,8 @@ export class AuditService {
       ? await this.github.getPRDiff(repo.owner, repo.repo, prNumber)
       : "No PR diff available — auditing repository configuration only.";
 
-    const scopeDesc =
-      SCOPE_DESCRIPTIONS[opts.scope] ?? SCOPE_DESCRIPTIONS["all"] ?? "";
-    const extra = opts.instructions
-      ? `\n\nAdditional instructions: ${opts.instructions}`
-      : "";
+    const scopeDesc = SCOPE_DESCRIPTIONS[opts.scope] ?? SCOPE_DESCRIPTIONS["all"] ?? "";
+    const extra = opts.instructions ? `\n\nAdditional instructions: ${opts.instructions}` : "";
     const systemPrompt = `${SYSTEM_PROMPT}\n\nScope: ${scopeDesc}${extra}`;
 
     const raw = await this.copilot.complete(systemPrompt, diff);
@@ -102,19 +97,14 @@ export class AuditService {
       const failThreshold = SEVERITY_ORDER[failOn] ?? 0;
       const passed =
         failThreshold === 0 ||
-        findings.every(
-          (f) => (SEVERITY_ORDER[f.severity] ?? 0) < failThreshold,
-        );
+        findings.every((f) => (SEVERITY_ORDER[f.severity] ?? 0) < failThreshold);
       return {
         findings,
         passed,
         summary: parsed.summary ?? `Found ${findings.length} findings.`,
       };
     } catch (error) {
-      throw new ValidationError(
-        "Copilot audit response was not valid audit JSON.",
-        error,
-      );
+      throw new ValidationError("Copilot audit response was not valid audit JSON.", error);
     }
   }
 }

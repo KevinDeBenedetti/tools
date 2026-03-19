@@ -311,9 +311,7 @@ export function parseCliInput(argv: string[]): ParsedInput {
       }
 
       if (existing !== undefined) {
-        options[key] = Array.isArray(existing)
-          ? [...existing, parsed]
-          : [existing, parsed];
+        options[key] = Array.isArray(existing) ? [...existing, parsed] : [existing, parsed];
       } else {
         options[key] = parsed;
       }
@@ -326,9 +324,7 @@ export function parseCliInput(argv: string[]): ParsedInput {
         throw new Error(`Unexpected positional argument: ${arg}`);
       }
       if (!COMMAND_NAMES.includes(arg as Command)) {
-        throw new Error(
-          `Unknown command: ${arg}. Use --help to see available commands.`,
-        );
+        throw new Error(`Unknown command: ${arg}. Use --help to see available commands.`);
       }
       command = arg as Command;
       continue;
@@ -357,9 +353,7 @@ export function formatGeneralHelp(): string {
   lines.push("  --help, -h         Show help");
   lines.push("  --interactive, -i  Launch interactive TUI");
   lines.push("");
-  lines.push(
-    `Run ${color.cyan("bun run github [command] --help")} for command-specific help.`,
-  );
+  lines.push(`Run ${color.cyan("bun run github [command] --help")} for command-specific help.`);
 
   return lines.join("\n");
 }
@@ -381,8 +375,7 @@ export function formatCommandHelp(command: Command | string): string {
   for (const flag of def.flags) {
     const label = `--${toKebabCase(flag.name)}`;
     const req = flag.required ? color.red(" (required)") : "";
-    const def_ =
-      flag.default !== undefined ? color.dim(` [${flag.default}]`) : "";
+    const def_ = flag.default !== undefined ? color.dim(` [${flag.default}]`) : "";
     lines.push(`  ${label.padEnd(20)} ${flag.description}${req}${def_}`);
   }
 
@@ -391,10 +384,7 @@ export function formatCommandHelp(command: Command | string): string {
 
 // ── Mode detection ─────────────────────────────────────────────────────────────
 
-export function shouldUseInteractive(
-  parsed: ParsedInput,
-  isTTY: boolean,
-): boolean {
+export function shouldUseInteractive(parsed: ParsedInput, isTTY: boolean): boolean {
   if (parsed.help) {
     return false;
   }
@@ -431,9 +421,7 @@ export function buildCommandPreview(
       // Omit
     } else {
       const strVal = String(value);
-      flags.push(
-        strVal.includes(" ") ? `${flag} "${strVal}"` : `${flag} ${strVal}`,
-      );
+      flags.push(strVal.includes(" ") ? `${flag} "${strVal}"` : `${flag} ${strVal}`);
     }
   }
 
@@ -446,10 +434,7 @@ export function buildCommandPreview(
 
 // ── Interactive TUI ────────────────────────────────────────────────────────────
 
-async function promptString(
-  label: string,
-  placeholder?: string,
-): Promise<string | undefined> {
+async function promptString(label: string, placeholder?: string): Promise<string | undefined> {
   const val = await p.text({ message: label, placeholder });
   if (p.isCancel(val)) {
     return undefined;
@@ -465,10 +450,7 @@ async function promptBoolean(label: string): Promise<boolean> {
   return val as boolean;
 }
 
-async function promptNumber(
-  label: string,
-  defaultValue?: number,
-): Promise<number> {
+async function promptNumber(label: string, defaultValue?: number): Promise<number> {
   const val = await p.text({
     message: label,
     placeholder: defaultValue !== undefined ? String(defaultValue) : undefined,
@@ -480,9 +462,7 @@ async function promptNumber(
   return Number.isNaN(n) ? (defaultValue ?? 0) : n;
 }
 
-async function collectOptions(
-  command: Command,
-): Promise<Record<string, unknown>> {
+async function collectOptions(command: Command): Promise<Record<string, unknown>> {
   const def = COMMANDS[command];
   const options: Record<string, unknown> = {};
 
@@ -493,10 +473,7 @@ async function collectOptions(
         options[flag.name] = true;
       }
     } else if (flag.type === "number") {
-      const val = await promptNumber(
-        `${flag.description} (number)`,
-        flag.default as number,
-      );
+      const val = await promptNumber(`${flag.description} (number)`, flag.default as number);
       options[flag.name] = val;
     } else if (flag.type === "string" || flag.type === "string[]") {
       const val = await promptString(
@@ -550,10 +527,7 @@ async function runInteractive(): Promise<void> {
 
 // ── Command runners ────────────────────────────────────────────────────────────
 
-async function runCommand(
-  command: Command,
-  options: Record<string, unknown>,
-): Promise<void> {
+async function runCommand(command: Command, options: Record<string, unknown>): Promise<void> {
   switch (command) {
     case "detect-bots": {
       const svc = new DetectBotsService(options);
@@ -596,10 +570,7 @@ async function runCommand(
 
 // ── Entry point ────────────────────────────────────────────────────────────────
 
-export async function runGithubCli(
-  argv: string[],
-  isTTY: boolean,
-): Promise<void> {
+export async function runGithubCli(argv: string[], isTTY: boolean): Promise<void> {
   let parsed: ParsedInput;
 
   try {

@@ -1,8 +1,4 @@
-import type {
-  ITool,
-  ToolContext,
-  ToolResult,
-} from "../../shared/types/copilot";
+import type { ITool, ToolContext, ToolResult } from "../../shared/types/copilot";
 import { generateInputSchema } from "./generate.schema";
 import { GenerateService } from "./generate.service";
 

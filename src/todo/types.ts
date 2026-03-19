@@ -133,13 +133,7 @@ export const priorityLabels: Record<TodoPriority, LabelDef> = {
 
 // ── Sync log ───────────────────────────────────────────────────────────────────
 
-export type SyncAction =
-  | "created"
-  | "recovered"
-  | "linked"
-  | "updated"
-  | "unchanged"
-  | "closed";
+export type SyncAction = "created" | "recovered" | "linked" | "updated" | "unchanged" | "closed";
 
 export interface IssueChanges {
   title?: [string, string];

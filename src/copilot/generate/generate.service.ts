@@ -30,28 +30,16 @@ export class GenerateService {
     if (prNumber) {
       context = await this.github.getPRDiff(repo.owner, repo.repo, prNumber);
     } else if (opts.filePath) {
-      context = await this.github.getFileContent(
-        repo.owner,
-        repo.repo,
-        opts.filePath,
-      );
+      context = await this.github.getFileContent(repo.owner, repo.repo, opts.filePath);
     }
 
     const typePrompt =
-      TYPE_PROMPTS[opts.type] ??
-      TYPE_PROMPTS["summary"] ??
-      "Summarize the changes.";
-    const extra = opts.instructions
-      ? `\n\nAdditional instructions: ${opts.instructions}`
-      : "";
-    const formatHint =
-      opts.format === "markdown" ? "" : `\n\nOutput format: ${opts.format}`;
+      TYPE_PROMPTS[opts.type] ?? TYPE_PROMPTS["summary"] ?? "Summarize the changes.";
+    const extra = opts.instructions ? `\n\nAdditional instructions: ${opts.instructions}` : "";
+    const formatHint = opts.format === "markdown" ? "" : `\n\nOutput format: ${opts.format}`;
 
     const systemPrompt = `${SYSTEM_PROMPT}\n\nTask: ${typePrompt}${extra}${formatHint}`;
 
-    return this.copilot.complete(
-      systemPrompt,
-      context || "No code context provided.",
-    );
+    return this.copilot.complete(systemPrompt, context || "No code context provided.");
   }
 }

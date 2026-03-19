@@ -3,13 +3,7 @@ import {
   PurgePackagesOptionsSchema,
   parseRepoString,
 } from "../../shared/types/github";
-import {
-  ensureGhAuth,
-  formatError,
-  parseDuration,
-  runGh,
-  runGhJson,
-} from "../shared";
+import { ensureGhAuth, formatError, parseDuration, runGh, runGhJson } from "../shared";
 
 interface GhPackageVersion {
   created_at: string;
@@ -52,9 +46,7 @@ export class PurgePackagesService {
         deleted += 1;
         console.log(`✓ Deleted ${version.name}@${version.version}`);
       } catch (error) {
-        console.error(
-          `✗ Failed to delete ${version.version}: ${formatError(error)}`,
-        );
+        console.error(`✗ Failed to delete ${version.version}: ${formatError(error)}`);
       }
     }
 
@@ -82,8 +74,7 @@ export class PurgePackagesService {
   private sortByDate(versions: PackageVersion[]): PackageVersion[] {
     return [...versions].sort(
       (left: PackageVersion, right: PackageVersion) =>
-        new Date(right.createdAt).getTime() -
-        new Date(left.createdAt).getTime(),
+        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
     );
   }
 
@@ -92,9 +83,7 @@ export class PurgePackagesService {
 
     if (this.options.olderThan) {
       const cutoffDate = parseDuration(this.options.olderThan);
-      toDelete = toDelete.filter(
-        (version) => new Date(version.createdAt) < cutoffDate,
-      );
+      toDelete = toDelete.filter((version) => new Date(version.createdAt) < cutoffDate);
     }
 
     return toDelete;

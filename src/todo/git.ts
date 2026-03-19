@@ -2,14 +2,7 @@
  * Git operations: branches, commits, and pull requests
  */
 
-import {
-  createPR,
-  createRef,
-  getRefSha,
-  resolveRepo,
-  searchPRs,
-  updateRef,
-} from "./github";
+import { createPR, createRef, getRefSha, resolveRepo, searchPRs, updateRef } from "./github";
 
 // ── Branch operations ──────────────────────────────────────────────────────────
 
@@ -39,13 +32,7 @@ export async function pushTodoToBranch(branch: string): Promise<void> {
 
   // Get the current file SHA via gh api
   const proc = Bun.spawn(
-    [
-      "gh",
-      "api",
-      `repos/${owner}/${repo}/contents/${todoPath}?ref=main`,
-      "--jq",
-      ".sha",
-    ],
+    ["gh", "api", `repos/${owner}/${repo}/contents/${todoPath}?ref=main`, "--jq", ".sha"],
     { stderr: "pipe", stdout: "pipe" },
   );
   const [shaOut, shaErr, shaCode] = await Promise.all([
@@ -108,10 +95,7 @@ export async function findOpenSyncPR(): Promise<{
   return null;
 }
 
-export async function createPRWithTodo(
-  prTitle: string,
-  prBody: string,
-): Promise<void> {
+export async function createPRWithTodo(prTitle: string, prBody: string): Promise<void> {
   const branchName = "sync/todo-yml-push-main";
   const mainSha = await getRefSha("main");
 
@@ -134,8 +118,7 @@ export async function createPRWithTodo(
     const pr = await createPR(branchName, "main", prTitle, prBody);
     console.log(`  created PR #${pr.number}`);
   } catch (error) {
-    if (!(error instanceof Error) || !error.message.includes("already exists"))
-      throw error;
+    if (!(error instanceof Error) || !error.message.includes("already exists")) throw error;
     console.log(`  PR already exists`);
   }
 }

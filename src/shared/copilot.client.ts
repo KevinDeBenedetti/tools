@@ -37,19 +37,14 @@ export class CopilotClient implements ICopilotClient {
    * System instructions are prepended as context to the user prompt.
    */
   async complete(systemPrompt: string, userPrompt: string): Promise<string> {
-    const combined = systemPrompt
-      ? `${systemPrompt}\n\n---\n\n${userPrompt}`
-      : userPrompt;
+    const combined = systemPrompt ? `${systemPrompt}\n\n---\n\n${userPrompt}` : userPrompt;
 
     const session = await this.createSession();
     try {
       const response = await session.sendAndWait({ prompt: combined });
       return response?.data.content ?? "";
     } catch (error) {
-      throw new CopilotError(
-        `Copilot API call failed: ${String(error)}`,
-        error,
-      );
+      throw new CopilotError(`Copilot API call failed: ${String(error)}`, error);
     } finally {
       await session.disconnect();
       await this.sdk.stop();
@@ -60,13 +55,8 @@ export class CopilotClient implements ICopilotClient {
    * Streams the response, yielding delta chunks as they arrive.
    * Uses session events to receive incremental content.
    */
-  async *stream(
-    systemPrompt: string,
-    userPrompt: string,
-  ): AsyncGenerator<string> {
-    const combined = systemPrompt
-      ? `${systemPrompt}\n\n---\n\n${userPrompt}`
-      : userPrompt;
+  async *stream(systemPrompt: string, userPrompt: string): AsyncGenerator<string> {
+    const combined = systemPrompt ? `${systemPrompt}\n\n---\n\n${userPrompt}` : userPrompt;
 
     const session = await this.createSession(true);
     const queue: string[] = [];
@@ -79,9 +69,7 @@ export class CopilotClient implements ICopilotClient {
       } else if (event.type === "session.idle") {
         settled = true;
       } else if (event.type === "session.error") {
-        streamError = new CopilotError(
-          `${event.data.errorType}: ${event.data.message}`,
-        );
+        streamError = new CopilotError(`${event.data.errorType}: ${event.data.message}`);
         settled = true;
       }
     });
@@ -93,9 +81,7 @@ export class CopilotClient implements ICopilotClient {
         if (queue.length > 0) {
           yield queue.shift()!;
         } else {
-          await new Promise<void>((resolve) =>
-            globalThis.setTimeout(resolve, 10),
-          );
+          await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 10));
         }
       }
 

@@ -27,9 +27,7 @@ function mapStatus(githubState: string): TodoStatus {
 function syncIssueToTodo(): void {
   const todoFile = readTodo();
 
-  console.log(
-    `Syncing GitHub Issue → TODO.yml (${DRY_RUN ? "DRY RUN" : "LIVE"})`,
-  );
+  console.log(`Syncing GitHub Issue → TODO.yml (${DRY_RUN ? "DRY RUN" : "LIVE"})`);
   console.log(`Issue #${issueNumber}: "${issueTitle}" [${issueState}]\n`);
 
   const entry = todoFile.issues.find((e) => e.github_id === issueNumber);

@@ -1,8 +1,4 @@
-import type {
-  ICopilotClient,
-  IGitHubClient,
-  IReviewComment,
-} from "../../shared/types/copilot";
+import type { ICopilotClient, IGitHubClient, IReviewComment } from "../../shared/types/copilot";
 import { ValidationError } from "../../shared/errors";
 import type { ReviewInput } from "./review.schema";
 import { z } from "zod";
@@ -52,10 +48,7 @@ Rules:
         .trim();
       return reviewCommentsSchema.parse(JSON.parse(cleaned));
     } catch (error) {
-      throw new ValidationError(
-        "Copilot review response was not valid review JSON.",
-        error,
-      );
+      throw new ValidationError("Copilot review response was not valid review JSON.", error);
     }
   }
 }

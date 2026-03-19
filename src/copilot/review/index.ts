@@ -1,9 +1,4 @@
-import type {
-  IReviewComment,
-  ITool,
-  ToolContext,
-  ToolResult,
-} from "../../shared/types/copilot";
+import type { IReviewComment, ITool, ToolContext, ToolResult } from "../../shared/types/copilot";
 import { reviewInputSchema } from "./review.schema";
 import { ReviewService } from "./review.service";
 
@@ -12,8 +7,7 @@ export class ReviewTool implements ITool {
     if (!ctx.prNumber) {
       return {
         success: false,
-        summary:
-          "No pull_request context found. The review tool requires a PR number.",
+        summary: "No pull_request context found. The review tool requires a PR number.",
       };
     }
 
@@ -31,9 +25,7 @@ export class ReviewTool implements ITool {
       repo: ctx.repo.repo,
     });
 
-    ctx.logger.info(
-      `Posted review with ${comments.length} comment(s) on PR #${ctx.prNumber}`,
-    );
+    ctx.logger.info(`Posted review with ${comments.length} comment(s) on PR #${ctx.prNumber}`);
 
     return {
       annotations: comments.map((c: IReviewComment) => ({

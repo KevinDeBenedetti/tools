@@ -26,14 +26,10 @@ export function formatPushPRBody(log: SyncLogEntry[]): string {
         lines.push(`  - status: ${changes.status[0]} → ${changes.status[1]}`);
       }
       if (changes.priority) {
-        lines.push(
-          `  - priority: ${changes.priority[0]} → ${changes.priority[1]}`,
-        );
+        lines.push(`  - priority: ${changes.priority[0]} → ${changes.priority[1]}`);
       }
       if (changes.assignees) {
-        lines.push(
-          `  - assignees: ${changes.assignees[0]} → ${changes.assignees[1]}`,
-        );
+        lines.push(`  - assignees: ${changes.assignees[0]} → ${changes.assignees[1]}`);
       }
     }
   }

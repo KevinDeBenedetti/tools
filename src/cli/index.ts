@@ -8,8 +8,7 @@ type Category = "github" | "copilot" | "todo";
 
 const categoryDescriptions: Record<Category, string> = {
   copilot: "Copilot-powered code review, analysis, generation, and audit",
-  github:
-    "GitHub automation tools (purge runs/releases/tags, detect bots, scan secrets)",
+  github: "GitHub automation tools (purge runs/releases/tags, detect bots, scan secrets)",
   todo: "Bidirectional sync between TODO.yml and GitHub Issues",
 };
 
@@ -20,8 +19,7 @@ type CopilotTool = (typeof copilotTools)[number];
 
 const copilotDescriptions: Record<CopilotTool, string> = {
   analyze: "Analyze a PR for security, performance, or quality issues",
-  audit:
-    "Audit a PR for dependency vulnerabilities, secrets, and license issues",
+  audit: "Audit a PR for dependency vulnerabilities, secrets, and license issues",
   generate: "Generate tests, docs, changelog, or summary for a PR",
   review: "Post an AI code review on a pull request",
 };
@@ -30,8 +28,7 @@ const copilotUsage: Record<CopilotTool, string> = {
   analyze: "Set tool: analyze in your Copilot extension config",
   audit: "Set tool: audit in your Copilot extension config",
   generate: "Set tool: generate in your Copilot extension config",
-  review:
-    "GITHUB_TOKEN=... bun run src/index.ts  # triggered by GitHub Actions",
+  review: "GITHUB_TOKEN=... bun run src/index.ts  # triggered by GitHub Actions",
 };
 
 // ── Todo mode info ─────────────────────────────────────────────────────────────
@@ -56,9 +53,7 @@ async function promptSelect<T extends string>(
   return value as T;
 }
 
-async function promptConfirm(
-  opts: Parameters<typeof p.confirm>[0],
-): Promise<boolean | undefined> {
+async function promptConfirm(opts: Parameters<typeof p.confirm>[0]): Promise<boolean | undefined> {
   const value = await p.confirm(opts);
   if (p.isCancel(value) || typeof value !== "boolean") {
     return undefined;
@@ -204,9 +199,7 @@ if (import.meta.main) {
   try {
     await runMainMenu();
   } catch (error) {
-    console.error(
-      `❌ Error: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    console.error(`❌ Error: ${error instanceof Error ? error.message : String(error)}`);
     process.exitCode = 1;
   }
 }

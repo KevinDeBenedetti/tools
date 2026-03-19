@@ -63,8 +63,7 @@ export class DetectBotsService {
 
       return {
         botCommits,
-        percentage:
-          commits.length > 0 ? (botCommits.length / commits.length) * 100 : 0,
+        percentage: commits.length > 0 ? (botCommits.length / commits.length) * 100 : 0,
         totalCommits: commits.length,
       };
     } finally {
@@ -98,10 +97,7 @@ export class DetectBotsService {
   private resolveTarget(): DetectionTarget {
     if (this.options.repo && !this.options.local) {
       const cleanupPath = mkdtempSync(join(tmpdir(), "detect-bots-"));
-      const repoPath = join(
-        cleanupPath,
-        this.options.repo.split("/")[1] ?? "repo",
-      );
+      const repoPath = join(cleanupPath, this.options.repo.split("/")[1] ?? "repo");
 
       execFileSync("gh", ["repo", "clone", this.options.repo, repoPath], {
         encoding: "utf8",
@@ -122,13 +118,7 @@ export class DetectBotsService {
   private getAllCommits(repoPath: string): CommitRecord[] {
     const output = execFileSync(
       "git",
-      [
-        "-C",
-        repoPath,
-        "log",
-        "--all",
-        "--format=%H%x1f%an%x1f%ae%x1f%s%x1f%b%x1f%aI%x1e",
-      ],
+      ["-C", repoPath, "log", "--all", "--format=%H%x1f%an%x1f%ae%x1f%s%x1f%b%x1f%aI%x1e"],
       {
         encoding: "utf8",
         maxBuffer: 50 * 1024 * 1024,
@@ -181,18 +171,14 @@ export class DetectBotsService {
 
   private purgeBots(repoPath: string, botCommits: BotCommit[]): void {
     const mailmapFile = join(repoPath, ".mailmap-bots");
-    const mailmap = botCommits
-      .map((commit) => `<${commit.email}> <${commit.email}>`)
-      .join("\n");
+    const mailmap = botCommits.map((commit) => `<${commit.email}> <${commit.email}>`).join("\n");
 
     writeFileSync(mailmapFile, mailmap, "utf8");
 
     try {
-      execFileSync(
-        "git",
-        ["-C", repoPath, "filter-repo", "--mailmap", mailmapFile, "--force"],
-        { stdio: "pipe" },
-      );
+      execFileSync("git", ["-C", repoPath, "filter-repo", "--mailmap", mailmapFile, "--force"], {
+        stdio: "pipe",
+      });
       console.log(`✅ Successfully purged ${botCommits.length} bot commits`);
     } finally {
       rmSync(mailmapFile, { force: true });

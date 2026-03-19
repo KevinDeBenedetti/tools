@@ -2,11 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { detectChanges } from "../todo/issues";
 import { formatPushPRBody, formatPullPRBody } from "../todo/formatters";
 import { labelsForEntry } from "../todo/labels";
-import {
-  createdComment,
-  closedComment,
-  changesComment,
-} from "../todo/comments";
+import { createdComment, closedComment, changesComment } from "../todo/comments";
 import type { TodoEntry, GhIssue, SyncLogEntry } from "../todo/types";
 
 function makeEntry(overrides: Partial<TodoEntry> = {}): TodoEntry {
@@ -29,11 +25,7 @@ function makeIssue(overrides: Partial<GhIssue> = {}): GhIssue {
     body: null,
     state: "open",
     // Default labels match the default makeEntry (type:feat, status:open, priority:medium)
-    labels: [
-      { name: "type: feat" },
-      { name: "status: open" },
-      { name: "priority: medium" },
-    ],
+    labels: [{ name: "type: feat" }, { name: "status: open" }, { name: "priority: medium" }],
     assignees: [],
     ...overrides,
   };

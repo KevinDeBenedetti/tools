@@ -1,14 +1,5 @@
-import {
-  PurgeReleaseOptionsSchema,
-  type Release,
-} from "../../shared/types/github";
-import {
-  ensureGhAuth,
-  formatError,
-  matchesPattern,
-  runGh,
-  runGhJson,
-} from "../shared";
+import { PurgeReleaseOptionsSchema, type Release } from "../../shared/types/github";
+import { ensureGhAuth, formatError, matchesPattern, runGh, runGhJson } from "../shared";
 
 interface GhRelease {
   createdAt?: string;
@@ -55,9 +46,7 @@ export class PurgeReleaseService {
         deleted += 1;
         console.log(`✓ Deleted release ${release.tagName}`);
       } catch (error) {
-        console.error(
-          `✗ Failed to delete ${release.tagName}: ${formatError(error)}`,
-        );
+        console.error(`✗ Failed to delete ${release.tagName}: ${formatError(error)}`);
       }
     }
 
@@ -94,9 +83,7 @@ export class PurgeReleaseService {
       return filtered.filter((release) => release.tagName === this.options.tag);
     }
 
-    filtered = filtered.filter((release) =>
-      matchesPattern(release.tagName, this.options.pattern),
-    );
+    filtered = filtered.filter((release) => matchesPattern(release.tagName, this.options.pattern));
 
     if (this.options.keepLatest > 0) {
       filtered = filtered.slice(this.options.keepLatest);

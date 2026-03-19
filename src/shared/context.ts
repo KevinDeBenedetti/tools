@@ -28,16 +28,12 @@ export async function buildContext(): Promise<ToolContext> {
     options = parsed;
   } catch (error) {
     if (error instanceof ValidationError) throw error;
-    throw new ValidationError(
-      `Invalid JSON in "options" input: ${optionsRaw}`,
-      error,
-    );
+    throw new ValidationError(`Invalid JSON in "options" input: ${optionsRaw}`, error);
   }
 
   const { owner, repo } = github.context.repo;
   const pullRequest = github.context.payload.pull_request;
-  const prNumber =
-    typeof pullRequest?.number === "number" ? pullRequest.number : undefined;
+  const prNumber = typeof pullRequest?.number === "number" ? pullRequest.number : undefined;
 
   return {
     copilot: new CopilotClient(token, model),

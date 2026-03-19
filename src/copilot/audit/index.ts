@@ -1,8 +1,4 @@
-import type {
-  ITool,
-  ToolContext,
-  ToolResult,
-} from "../../shared/types/copilot";
+import type { ITool, ToolContext, ToolResult } from "../../shared/types/copilot";
 import { auditInputSchema } from "./audit.schema";
 import { AuditService } from "./audit.service";
 
@@ -13,9 +9,7 @@ export class AuditTool implements ITool {
 
     const report = await service.audit(ctx.repo, ctx.prNumber, opts);
 
-    ctx.logger.info(
-      `Audit complete — found ${report.findings.length} finding(s)`,
-    );
+    ctx.logger.info(`Audit complete — found ${report.findings.length} finding(s)`);
 
     const annotations = report.findings.map((f) => ({
       line: 1,

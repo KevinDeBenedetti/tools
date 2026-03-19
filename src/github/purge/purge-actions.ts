@@ -1,15 +1,5 @@
-import {
-  PurgeActionsOptionsSchema,
-  type WorkflowRun,
-} from "../../shared/types/github";
-import {
-  ensureGhAuth,
-  formatError,
-  parseDuration,
-  runGh,
-  runGhJson,
-  sleep,
-} from "../shared";
+import { PurgeActionsOptionsSchema, type WorkflowRun } from "../../shared/types/github";
+import { ensureGhAuth, formatError, parseDuration, runGh, runGhJson, sleep } from "../shared";
 
 interface GhRun {
   conclusion: string | null;
@@ -36,9 +26,7 @@ export class PurgeActionsService {
     if (this.options.dryRun) {
       console.log(`[DRY RUN] Would delete ${filtered.length} workflow runs`);
       for (const run of filtered.slice(0, 10)) {
-        console.log(
-          `  - ${run.name} (${run.id}) - ${run.status}/${run.conclusion ?? "N/A"}`,
-        );
+        console.log(`  - ${run.name} (${run.id}) - ${run.status}/${run.conclusion ?? "N/A"}`);
       }
       if (filtered.length > 10) {
         console.log(`  ... and ${filtered.length - 10} more`);
@@ -53,19 +41,11 @@ export class PurgeActionsService {
       await Promise.all(
         batch.map(async (run) => {
           try {
-            await runGh([
-              "run",
-              "delete",
-              String(run.id),
-              "--repo",
-              this.options.repo,
-            ]);
+            await runGh(["run", "delete", String(run.id), "--repo", this.options.repo]);
             deleted += 1;
             console.log(`✓ Deleted run ${run.id}: ${run.name}`);
           } catch (error) {
-            console.error(
-              `✗ Failed to delete run ${run.id}: ${formatError(error)}`,
-            );
+            console.error(`✗ Failed to delete run ${run.id}: ${formatError(error)}`);
           }
         }),
       );
@@ -140,9 +120,7 @@ export async function purgeActions(args: unknown): Promise<void> {
     const result = await service.purge();
 
     if (result.deleted > 0) {
-      console.log(
-        `\n✅ Deleted ${result.deleted} of ${result.total} workflow runs`,
-      );
+      console.log(`\n✅ Deleted ${result.deleted} of ${result.total} workflow runs`);
     } else {
       console.log("\nℹ️  No workflow runs to delete");
     }
