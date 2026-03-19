@@ -100,7 +100,10 @@ export class GitHubClient implements IGitHubClient {
       return Buffer.from(data.content, "base64").toString("utf8");
     } catch (error) {
       if (error instanceof GitHubError) throw error;
-      throw new GitHubError(`Failed to get file content: ${String(error)}`, error);
+      throw new GitHubError(
+        `Failed to get file content: ${String(error)}`,
+        error,
+      );
     }
   }
 }

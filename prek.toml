@@ -35,8 +35,26 @@ stages = ["pre-commit"]
 [[repos.hooks]]
 id = "typecheck"
 name = "TypeScript typecheck"
-entry = "bash"
-args = ["-c", "bun run github:typecheck && bun run todo:typecheck && bun x tsc --noEmit -p tsconfig.cli.json"]
+entry = "bun"
+args = ["run", "typecheck"]
+language = "system"
+pass_filenames = false
+stages = ["pre-push"]
+
+[[repos.hooks]]
+id = "github-typecheck"
+name = "GitHub CLI typecheck"
+entry = "bun"
+args = ["run", "github:typecheck"]
+language = "system"
+pass_filenames = false
+stages = ["pre-push"]
+
+[[repos.hooks]]
+id = "cli-typecheck"
+name = "CLI typecheck"
+entry = "bun"
+args = ["run", "cli:typecheck"]
 language = "system"
 pass_filenames = false
 stages = ["pre-push"]
@@ -45,7 +63,7 @@ stages = ["pre-push"]
 id = "test"
 name = "Tests (bun)"
 entry = "bun"
-args = ["test", "src/tests/", "src/cli/"]
+args = ["test"]
 language = "system"
 pass_filenames = false
 stages = ["pre-push"]

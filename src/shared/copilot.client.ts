@@ -46,7 +46,10 @@ export class CopilotClient implements ICopilotClient {
       const response = await session.sendAndWait({ prompt: combined });
       return response?.data.content ?? "";
     } catch (error) {
-      throw new CopilotError(`Copilot API call failed: ${String(error)}`, error);
+      throw new CopilotError(
+        `Copilot API call failed: ${String(error)}`,
+        error,
+      );
     } finally {
       await session.disconnect();
       await this.sdk.stop();
@@ -96,7 +99,9 @@ export class CopilotClient implements ICopilotClient {
         }
       }
 
-      if (streamError) {throw streamError;}
+      if (streamError) {
+        throw streamError;
+      }
     } finally {
       unsubscribe();
       await session.disconnect();

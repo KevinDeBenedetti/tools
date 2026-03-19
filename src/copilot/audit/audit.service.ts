@@ -98,7 +98,7 @@ export class AuditService {
         .replace(/\n?```$/, "")
         .trim();
       const parsed = auditResponseSchema.parse(JSON.parse(cleaned));
-      const {findings} = parsed;
+      const { findings } = parsed;
       const failThreshold = SEVERITY_ORDER[failOn] ?? 0;
       const passed =
         failThreshold === 0 ||

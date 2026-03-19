@@ -137,13 +137,21 @@ export async function push(): Promise<void> {
       if (Object.keys(changes).length > 0) {
         const updates: Record<string, unknown> = {};
 
-        if (changes.title) {updates["title"] = changes.title[1];}
-        if (changes.body) {updates["body"] = changes.body[1];}
-        if (changes.state) {updates["state"] = changes.state[1];}
+        if (changes.title) {
+          updates["title"] = changes.title[1];
+        }
+        if (changes.body) {
+          updates["body"] = changes.body[1];
+        }
+        if (changes.state) {
+          updates["state"] = changes.state[1];
+        }
         if (changes.type) {
           updates["labels"] = labelsForEntry(entry);
         }
-        if (changes.assignees) {updates["assignees"] = entry.assignees;}
+        if (changes.assignees) {
+          updates["assignees"] = entry.assignees;
+        }
 
         await updateIssue(issue.number, updates);
         await addComment(issue.number, changesComment(entry, changes));

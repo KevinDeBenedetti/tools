@@ -50,7 +50,9 @@ async function promptSelect<T extends string>(
   opts: Parameters<typeof p.select<T>>[0],
 ): Promise<T | undefined> {
   const value = await p.select<T>(opts);
-  if (p.isCancel(value) || typeof value !== "string") {return undefined;}
+  if (p.isCancel(value) || typeof value !== "string") {
+    return undefined;
+  }
   return value as T;
 }
 
@@ -58,7 +60,9 @@ async function promptConfirm(
   opts: Parameters<typeof p.confirm>[0],
 ): Promise<boolean | undefined> {
   const value = await p.confirm(opts);
-  if (p.isCancel(value) || typeof value !== "boolean") {return undefined;}
+  if (p.isCancel(value) || typeof value !== "boolean") {
+    return undefined;
+  }
   return value;
 }
 

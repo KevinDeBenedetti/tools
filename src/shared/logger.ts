@@ -32,7 +32,9 @@ export class ConsoleLogger implements ILogger {
     console.error(`[ERROR] ${msg}`);
   }
   debug(msg: string): void {
-    if (process.env["DEBUG"]) {console.log(`[DEBUG] ${msg}`);}
+    if (process.env["DEBUG"]) {
+      console.log(`[DEBUG] ${msg}`);
+    }
   }
 }
 
