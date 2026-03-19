@@ -366,7 +366,9 @@ export function formatGeneralHelp(): string {
 
 export function formatCommandHelp(command: Command | string): string {
   const def = COMMANDS[command as Command];
-  if (!def) {return `Unknown command: ${command}`;}
+  if (!def) {
+    return `Unknown command: ${command}`;
+  }
 
   const lines: string[] = [
     `${color.bold(command)} — ${def.description}`,
@@ -393,10 +395,18 @@ export function shouldUseInteractive(
   parsed: ParsedInput,
   isTTY: boolean,
 ): boolean {
-  if (parsed.help) {return false;}
-  if (parsed.interactive) {return true;}
-  if (!isTTY) {return false;}
-  if (parsed.command) {return false;}
+  if (parsed.help) {
+    return false;
+  }
+  if (parsed.interactive) {
+    return true;
+  }
+  if (!isTTY) {
+    return false;
+  }
+  if (parsed.command) {
+    return false;
+  }
   return true;
 }
 
@@ -428,7 +438,9 @@ export function buildCommandPreview(
   }
 
   const base = `bun run github:${command}`;
-  if (flags.length === 0) {return base;}
+  if (flags.length === 0) {
+    return base;
+  }
   return `${base} -- ${flags.join(" ")}`;
 }
 
@@ -439,13 +451,17 @@ async function promptString(
   placeholder?: string,
 ): Promise<string | undefined> {
   const val = await p.text({ message: label, placeholder });
-  if (p.isCancel(val)) {return undefined;}
+  if (p.isCancel(val)) {
+    return undefined;
+  }
   return (val as string) || undefined;
 }
 
 async function promptBoolean(label: string): Promise<boolean> {
   const val = await p.confirm({ initialValue: false, message: label });
-  if (p.isCancel(val)) {return false;}
+  if (p.isCancel(val)) {
+    return false;
+  }
   return val as boolean;
 }
 
@@ -457,7 +473,9 @@ async function promptNumber(
     message: label,
     placeholder: defaultValue !== undefined ? String(defaultValue) : undefined,
   });
-  if (p.isCancel(val) || !val) {return defaultValue ?? 0;}
+  if (p.isCancel(val) || !val) {
+    return defaultValue ?? 0;
+  }
   const n = Number(val);
   return Number.isNaN(n) ? (defaultValue ?? 0) : n;
 }
@@ -471,7 +489,9 @@ async function collectOptions(
   for (const flag of def.flags) {
     if (flag.type === "boolean") {
       const val = await promptBoolean(flag.description);
-      if (val) {options[flag.name] = true;}
+      if (val) {
+        options[flag.name] = true;
+      }
     } else if (flag.type === "number") {
       const val = await promptNumber(
         `${flag.description} (number)`,
@@ -483,7 +503,9 @@ async function collectOptions(
         flag.description,
         flag.default ? String(flag.default) : undefined,
       );
-      if (val) {options[flag.name] = flag.type === "string[]" ? [val] : val;}
+      if (val) {
+        options[flag.name] = flag.type === "string[]" ? [val] : val;
+      }
     }
   }
 

@@ -53,8 +53,12 @@ export async function createIssue(
   assignees: string[] = [],
 ): Promise<number> {
   const args = ["issue", "create", "--title", title, "--body", body || " "];
-  for (const l of labels) {args.push("--label", l);}
-  for (const a of assignees) {args.push("--assignee", a);}
+  for (const l of labels) {
+    args.push("--label", l);
+  }
+  for (const a of assignees) {
+    args.push("--assignee", a);
+  }
   args.push("--json", "number");
 
   const result = await runGhJson<{ number: number }>(args);
@@ -73,8 +77,12 @@ export async function updateIssue(
 ): Promise<void> {
   const args = ["issue", "edit", String(number)];
 
-  if (updates.title) {args.push("--title", updates.title);}
-  if (updates.body !== undefined) {args.push("--body", updates.body || " ");}
+  if (updates.title) {
+    args.push("--title", updates.title);
+  }
+  if (updates.body !== undefined) {
+    args.push("--body", updates.body || " ");
+  }
   if (updates.state === "closed") {
     await runGh(["issue", "close", String(number)]);
     return;
