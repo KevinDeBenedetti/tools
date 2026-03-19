@@ -39,6 +39,7 @@ jobs:
   dispatch:
     name: Dispatch docs rebuild
     needs: [ci, security]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.PAT_TOKEN != ''
     uses: KevinDeBenedetti/github-workflows/.github/workflows/cd-docs.yml@main
-    secrets: inherit
+    secrets:
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
