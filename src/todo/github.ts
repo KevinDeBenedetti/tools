@@ -3,14 +3,14 @@
  * direct API calls.  Requires `gh auth login` before running.
  */
 
-import { GhIssue, GhLabelFull, GhPR, GhRef } from "./types";
+import type { GhIssue, GhLabelFull, GhPR, GhRef } from "./types";
 
 // ── subprocess helpers ─────────────────────────────────────────────────────────
 
 async function runGh(args: string[]): Promise<string> {
   const proc = Bun.spawn(["gh", ...args], {
-    stdout: "pipe",
     stderr: "pipe",
+    stdout: "pipe",
   });
   const [out, err, code] = await Promise.all([
     new Response(proc.stdout).text(),
@@ -53,8 +53,8 @@ export async function createIssue(
   assignees: string[] = [],
 ): Promise<number> {
   const args = ["issue", "create", "--title", title, "--body", body || " "];
-  for (const l of labels) args.push("--label", l);
-  for (const a of assignees) args.push("--assignee", a);
+  for (const l of labels) {args.push("--label", l);}
+  for (const a of assignees) {args.push("--assignee", a);}
   args.push("--json", "number");
 
   const result = await runGhJson<{ number: number }>(args);
@@ -73,8 +73,8 @@ export async function updateIssue(
 ): Promise<void> {
   const args = ["issue", "edit", String(number)];
 
-  if (updates.title) args.push("--title", updates.title);
-  if (updates.body !== undefined) args.push("--body", updates.body || " ");
+  if (updates.title) {args.push("--title", updates.title);}
+  if (updates.body !== undefined) {args.push("--body", updates.body || " ");}
   if (updates.state === "closed") {
     await runGh(["issue", "close", String(number)]);
     return;
@@ -143,7 +143,7 @@ export async function fetchAllIssues(): Promise<{
     byNumber.set(issue.number, issue);
   }
 
-  return { byTitle, byNumber };
+  return { byNumber, byTitle };
 }
 
 // ── Labels ────────────────────────────────────────────────────────────────────
@@ -163,7 +163,7 @@ export async function createLabel(
     description,
     "--force",
   ]);
-  return { name, color, description };
+  return { color, description, name };
 }
 
 export async function updateLabel(
@@ -183,7 +183,7 @@ export async function updateLabel(
     "--description",
     description,
   ]);
-  return { name: newName, color, description };
+  return { color, description, name: newName };
 }
 
 // ── Git refs ───────────────────────────────────────────────────────────────────

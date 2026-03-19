@@ -11,14 +11,14 @@ import {
   sleep,
 } from "../shared";
 
-type GhRun = {
+interface GhRun {
   conclusion: string | null;
   createdAt: string;
   databaseId: number;
   displayTitle: string;
   status: string;
   workflowName?: string;
-};
+}
 
 export class PurgeActionsService {
   private readonly options: ReturnType<typeof PurgeActionsOptionsSchema.parse>;

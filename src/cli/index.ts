@@ -7,9 +7,9 @@ import { runGithubCli } from "../github/cli";
 type Category = "github" | "copilot" | "todo";
 
 const categoryDescriptions: Record<Category, string> = {
+  copilot: "Copilot-powered code review, analysis, generation, and audit",
   github:
     "GitHub automation tools (purge runs/releases/tags, detect bots, scan secrets)",
-  copilot: "Copilot-powered code review, analysis, generation, and audit",
   todo: "Bidirectional sync between TODO.yml and GitHub Issues",
 };
 
@@ -19,19 +19,19 @@ const copilotTools = ["review", "analyze", "audit", "generate"] as const;
 type CopilotTool = (typeof copilotTools)[number];
 
 const copilotDescriptions: Record<CopilotTool, string> = {
-  review: "Post an AI code review on a pull request",
   analyze: "Analyze a PR for security, performance, or quality issues",
   audit:
     "Audit a PR for dependency vulnerabilities, secrets, and license issues",
   generate: "Generate tests, docs, changelog, or summary for a PR",
+  review: "Post an AI code review on a pull request",
 };
 
 const copilotUsage: Record<CopilotTool, string> = {
-  review:
-    "GITHUB_TOKEN=... bun run src/index.ts  # triggered by GitHub Actions",
   analyze: "Set tool: analyze in your Copilot extension config",
   audit: "Set tool: audit in your Copilot extension config",
   generate: "Set tool: generate in your Copilot extension config",
+  review:
+    "GITHUB_TOKEN=... bun run src/index.ts  # triggered by GitHub Actions",
 };
 
 // ── Todo mode info ─────────────────────────────────────────────────────────────
@@ -39,9 +39,9 @@ const copilotUsage: Record<CopilotTool, string> = {
 type TodoMode = "push" | "pull" | "labels";
 
 const todoModeDescriptions: Record<TodoMode, string> = {
-  push: "TODO.yml → GitHub Issues (create / update issues)",
-  pull: "GitHub Issue event → TODO.yml (sync issue changes back)",
   labels: "Sync labels.yml label definitions to the GitHub repo",
+  pull: "GitHub Issue event → TODO.yml (sync issue changes back)",
+  push: "TODO.yml → GitHub Issues (create / update issues)",
 };
 
 // ── Clack prompt wrappers ──────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ async function promptSelect<T extends string>(
   opts: Parameters<typeof p.select<T>>[0],
 ): Promise<T | undefined> {
   const value = await p.select<T>(opts);
-  if (p.isCancel(value) || typeof value !== "string") return undefined;
+  if (p.isCancel(value) || typeof value !== "string") {return undefined;}
   return value as T;
 }
 
@@ -58,7 +58,7 @@ async function promptConfirm(
   opts: Parameters<typeof p.confirm>[0],
 ): Promise<boolean | undefined> {
   const value = await p.confirm(opts);
-  if (p.isCancel(value) || typeof value !== "boolean") return undefined;
+  if (p.isCancel(value) || typeof value !== "boolean") {return undefined;}
   return value;
 }
 
@@ -78,9 +78,9 @@ async function runCopilotMenu(): Promise<void> {
   const tool = await promptSelect<CopilotTool>({
     message: "Which tool would you like to learn about?",
     options: copilotTools.map((t) => ({
-      value: t,
-      label: t,
       hint: copilotDescriptions[t],
+      label: t,
+      value: t,
     })),
   });
 
@@ -117,9 +117,9 @@ async function runTodoMenu(): Promise<void> {
   const mode = await promptSelect<TodoMode>({
     message: "Select sync mode",
     options: [
-      { value: "push", label: "push", hint: todoModeDescriptions.push },
-      { value: "pull", label: "pull", hint: todoModeDescriptions.pull },
-      { value: "labels", label: "labels", hint: todoModeDescriptions.labels },
+      { hint: todoModeDescriptions.push, label: "push", value: "push" },
+      { hint: todoModeDescriptions.pull, label: "pull", value: "pull" },
+      { hint: todoModeDescriptions.labels, label: "labels", value: "labels" },
     ],
   });
 
@@ -129,8 +129,8 @@ async function runTodoMenu(): Promise<void> {
   }
 
   const confirmed = await promptConfirm({
-    message: `Run: bun run src/todo/sync-todo.ts ${mode}?`,
     initialValue: true,
+    message: `Run: bun run src/todo/sync-todo.ts ${mode}?`,
   });
 
   if (!confirmed) {
@@ -141,8 +141,8 @@ async function runTodoMenu(): Promise<void> {
   console.log(`\n→ bun run src/todo/sync-todo.ts ${mode}\n`);
 
   const proc = Bun.spawn(["bun", "run", "src/todo/sync-todo.ts", mode], {
-    stdout: "inherit",
     stderr: "inherit",
+    stdout: "inherit",
   });
   const code = await proc.exited;
   if (code !== 0) {
@@ -159,16 +159,16 @@ async function runMainMenu(): Promise<void> {
     message: "Select a tool category",
     options: [
       {
-        value: "github",
-        label: "GitHub Tools",
         hint: categoryDescriptions.github,
+        label: "GitHub Tools",
+        value: "github",
       },
       {
-        value: "copilot",
-        label: "Copilot Tools",
         hint: categoryDescriptions.copilot,
+        label: "Copilot Tools",
+        value: "copilot",
       },
-      { value: "todo", label: "Todo Sync", hint: categoryDescriptions.todo },
+      { hint: categoryDescriptions.todo, label: "Todo Sync", value: "todo" },
     ],
   });
 
@@ -178,18 +178,21 @@ async function runMainMenu(): Promise<void> {
   }
 
   switch (category) {
-    case "github":
+    case "github": {
       p.outro("Launching GitHub Tools…");
       await runGithubCli(["--interactive"], true);
       break;
-    case "copilot":
+    }
+    case "copilot": {
       await runCopilotMenu();
       p.outro("Done.");
       break;
-    case "todo":
+    }
+    case "todo": {
       await runTodoMenu();
       p.outro("Done.");
       break;
+    }
   }
 }
 

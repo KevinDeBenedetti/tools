@@ -76,10 +76,10 @@ export interface LabelsFile {
 }
 
 export const typeLabels: Record<TodoType, LabelDef> = {
-  feat: { name: "type: feat", color: "#0075ca", description: "New feature" },
-  fix: { name: "type: fix", color: "#d73a4a", description: "Bug fix" },
   chore: { name: "type: chore", color: "#e4e669", description: "Maintenance" },
   docs: { name: "type: docs", color: "#0075ca", description: "Documentation" },
+  feat: { name: "type: feat", color: "#0075ca", description: "New feature" },
+  fix: { name: "type: fix", color: "#d73a4a", description: "Bug fix" },
   refactor: {
     name: "type: refactor",
     color: "#cfd3d7",
@@ -94,40 +94,40 @@ export const statusLabels: Record<TodoStatus, LabelDef> = {
     color: "#cfd3d7",
     description: "Not yet started",
   },
-  open: {
-    name: "status: open",
-    color: "#0075ca",
-    description: "Open and ready",
-  },
-  in_progress: {
-    name: "status: in-progress",
-    color: "#e4e669",
-    description: "In progress",
-  },
-  done: { name: "status: done", color: "#0e8a16", description: "Completed" },
   closed: {
     name: "status: closed",
     color: "#cfd3d7",
     description: "Closed without completion",
   },
+  done: { name: "status: done", color: "#0e8a16", description: "Completed" },
+  in_progress: {
+    name: "status: in-progress",
+    color: "#e4e669",
+    description: "In progress",
+  },
+  open: {
+    name: "status: open",
+    color: "#0075ca",
+    description: "Open and ready",
+  },
 };
 
 export const priorityLabels: Record<TodoPriority, LabelDef> = {
-  low: { name: "priority: low", color: "#cfd3d7", description: "Low priority" },
-  medium: {
-    name: "priority: medium",
-    color: "#fbca04",
-    description: "Medium priority",
+  critical: {
+    name: "priority: critical",
+    color: "#d73a4a",
+    description: "Critical priority",
   },
   high: {
     name: "priority: high",
     color: "#e4e669",
     description: "High priority",
   },
-  critical: {
-    name: "priority: critical",
-    color: "#d73a4a",
-    description: "Critical priority",
+  low: { name: "priority: low", color: "#cfd3d7", description: "Low priority" },
+  medium: {
+    name: "priority: medium",
+    color: "#fbca04",
+    description: "Medium priority",
   },
 };
 

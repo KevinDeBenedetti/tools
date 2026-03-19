@@ -2,13 +2,13 @@ import type { ICopilotClient, IGitHubClient } from "../../shared/types/copilot";
 import type { AnalyzeInput } from "./analyze.schema";
 
 const TARGET_DESCRIPTIONS: Record<string, string> = {
-  security:
-    "Identify OWASP Top-10 vulnerabilities, secret leaks, and insecure patterns.",
+  all: "Perform a comprehensive analysis covering security, performance, and quality.",
   performance:
     "Identify algorithmic inefficiencies, N+1 queries, and memory footprint issues.",
   quality:
     "Evaluate code readability, test coverage gaps, and adherence to best practices.",
-  all: "Perform a comprehensive analysis covering security, performance, and quality.",
+  security:
+    "Identify OWASP Top-10 vulnerabilities, secret leaks, and insecure patterns.",
 };
 
 const SYSTEM_PROMPT = `

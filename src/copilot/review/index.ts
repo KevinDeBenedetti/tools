@@ -1,8 +1,8 @@
 import type {
+  IReviewComment,
   ITool,
   ToolContext,
   ToolResult,
-  IReviewComment,
 } from "../../shared/types/copilot";
 import { reviewInputSchema } from "./review.schema";
 import { ReviewService } from "./review.service";
@@ -23,12 +23,12 @@ export class ReviewTool implements ITool {
 
     // Post the review
     await ctx.github.createReview({
-      owner: ctx.repo.owner,
-      repo: ctx.repo.repo,
-      pull_number: ctx.prNumber,
       body: `GitHub Copilot review — ${comments.length} suggestion(s)`,
       comments: comments,
       event: opts.event,
+      owner: ctx.repo.owner,
+      pull_number: ctx.prNumber,
+      repo: ctx.repo.repo,
     });
 
     ctx.logger.info(
@@ -36,13 +36,13 @@ export class ReviewTool implements ITool {
     );
 
     return {
-      success: true,
-      summary: `Review posted: ${comments.length} suggestion(s)`,
       annotations: comments.map((c: IReviewComment) => ({
         path: c.path,
         line: c.line,
         message: c.body,
       })),
+      success: true,
+      summary: `Review posted: ${comments.length} suggestion(s)`,
     };
   }
 }

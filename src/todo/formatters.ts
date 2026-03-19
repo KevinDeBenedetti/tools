@@ -2,15 +2,15 @@
  * Pull request body formatting
  */
 
-import type { TodoEntry, SyncLogEntry, SyncAction } from "./types";
+import type { SyncAction, SyncLogEntry, TodoEntry } from "./types";
 
 const ACTION_ICONS: Record<SyncAction, string> = {
-  created: "✨",
-  recovered: "🔗",
-  linked: "🔗",
-  updated: "📝",
-  unchanged: "⏭️",
   closed: "✅",
+  created: "✨",
+  linked: "🔗",
+  recovered: "🔗",
+  unchanged: "⏭️",
+  updated: "📝",
 };
 
 export function formatPushPRBody(log: SyncLogEntry[]): string {
@@ -23,15 +23,15 @@ export function formatPushPRBody(log: SyncLogEntry[]): string {
     if (entry.changes) {
       const { changes } = entry;
       if (changes.status)
-        lines.push(`  - status: ${changes.status[0]} → ${changes.status[1]}`);
+        {lines.push(`  - status: ${changes.status[0]} → ${changes.status[1]}`);}
       if (changes.priority)
-        lines.push(
+        {lines.push(
           `  - priority: ${changes.priority[0]} → ${changes.priority[1]}`,
-        );
+        );}
       if (changes.assignees)
-        lines.push(
+        {lines.push(
           `  - assignees: ${changes.assignees[0]} → ${changes.assignees[1]}`,
-        );
+        );}
     }
   }
 

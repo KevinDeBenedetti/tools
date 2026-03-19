@@ -22,19 +22,19 @@ export class GitHubClient implements IGitHubClient {
     try {
       const { data } = await this.octokit.rest.pulls.listFiles({
         owner,
-        repo,
-        pull_number: prNumber,
         per_page: 100,
+        pull_number: prNumber,
+        repo,
       });
       return data.map((f) => ({
+        additions: f.additions,
+        deletions: f.deletions,
         filename: f.filename,
         patch: f.patch,
         status: f.status,
-        additions: f.additions,
-        deletions: f.deletions,
       }));
-    } catch (err) {
-      throw new GitHubError(`Failed to list PR files: ${String(err)}`, err);
+    } catch (error) {
+      throw new GitHubError(`Failed to list PR files: ${String(error)}`, error);
     }
   }
 
@@ -49,8 +49,8 @@ export class GitHubClient implements IGitHubClient {
         .filter((f) => f.patch)
         .map((f) => `--- ${f.filename} ---\n${f.patch}`)
         .join("\n\n");
-    } catch (err) {
-      throw new GitHubError(`Failed to get PR diff: ${String(err)}`, err);
+    } catch (error) {
+      throw new GitHubError(`Failed to get PR diff: ${String(error)}`, error);
     }
   }
 
@@ -64,9 +64,6 @@ export class GitHubClient implements IGitHubClient {
   }): Promise<void> {
     try {
       await this.octokit.rest.pulls.createReview({
-        owner: params.owner,
-        repo: params.repo,
-        pull_number: params.pull_number,
         body: params.body,
         comments: params.comments.map((c) => ({
           path: c.path,
@@ -75,9 +72,12 @@ export class GitHubClient implements IGitHubClient {
           side: "RIGHT" as const,
         })),
         event: params.event,
+        owner: params.owner,
+        pull_number: params.pull_number,
+        repo: params.repo,
       });
-    } catch (err) {
-      throw new GitHubError(`Failed to create review: ${String(err)}`, err);
+    } catch (error) {
+      throw new GitHubError(`Failed to create review: ${String(error)}`, error);
     }
   }
 
@@ -90,17 +90,17 @@ export class GitHubClient implements IGitHubClient {
     try {
       const { data } = await this.octokit.rest.repos.getContent({
         owner,
-        repo,
         path,
+        repo,
         ...(ref ? { ref } : {}),
       });
       if (Array.isArray(data) || data.type !== "file") {
         throw new GitHubError(`Path "${path}" is not a file`);
       }
-      return Buffer.from(data.content, "base64").toString("utf-8");
-    } catch (err) {
-      if (err instanceof GitHubError) throw err;
-      throw new GitHubError(`Failed to get file content: ${String(err)}`, err);
+      return Buffer.from(data.content, "base64").toString("utf8");
+    } catch (error) {
+      if (error instanceof GitHubError) throw error;
+      throw new GitHubError(`Failed to get file content: ${String(error)}`, error);
     }
   }
 }

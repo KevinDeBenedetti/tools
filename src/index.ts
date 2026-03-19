@@ -35,7 +35,7 @@ async function main(): Promise<void> {
 
 try {
   await main();
-} catch (err: unknown) {
-  core.setFailed(toMessage(err));
+} catch (error: unknown) {
+  core.setFailed(toMessage(error));
   process.exitCode = 1;
 }

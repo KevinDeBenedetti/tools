@@ -8,9 +8,9 @@ import type { ReviewInput } from "./review.schema";
 import { z } from "zod";
 
 const reviewCommentSchema = z.object({
-  path: z.string().min(1),
-  line: z.number().int().positive(),
   body: z.string().min(1),
+  line: z.number().int().positive(),
+  path: z.string().min(1),
 });
 
 const reviewCommentsSchema = z.array(reviewCommentSchema);

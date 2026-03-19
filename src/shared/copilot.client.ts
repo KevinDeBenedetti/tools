@@ -27,8 +27,8 @@ export class CopilotClient implements ICopilotClient {
     await this.sdk.start();
     return this.sdk.createSession({
       model: this.model,
-      streaming,
       onPermissionRequest: approveAll,
+      streaming,
     });
   }
 
@@ -45,8 +45,8 @@ export class CopilotClient implements ICopilotClient {
     try {
       const response = await session.sendAndWait({ prompt: combined });
       return response?.data.content ?? "";
-    } catch (err) {
-      throw new CopilotError(`Copilot API call failed: ${String(err)}`, err);
+    } catch (error) {
+      throw new CopilotError(`Copilot API call failed: ${String(error)}`, error);
     } finally {
       await session.disconnect();
       await this.sdk.stop();
@@ -96,7 +96,7 @@ export class CopilotClient implements ICopilotClient {
         }
       }
 
-      if (streamError) throw streamError;
+      if (streamError) {throw streamError;}
     } finally {
       unsubscribe();
       await session.disconnect();

@@ -17,20 +17,20 @@ export function parseRepoString(repo: string): GitHubRepo {
 }
 
 export const DetectBotsOptionsSchema = z.object({
-  repo: z
-    .string()
-    .optional()
-    .describe("GitHub repository in owner/repo format"),
-  local: z.boolean().default(true).describe("Scan local repository"),
   dryRun: z
     .boolean()
     .default(false)
     .describe("Show what would be done without doing it"),
+  format: OutputFormatSchema.default("text").describe("Output format"),
+  local: z.boolean().default(true).describe("Scan local repository"),
   purgeBots: z
     .boolean()
     .default(false)
     .describe("Remove bot commits from Git history"),
-  format: OutputFormatSchema.default("text").describe("Output format"),
+  repo: z
+    .string()
+    .optional()
+    .describe("GitHub repository in owner/repo format"),
 });
 
 export type DetectBotsOptions = z.infer<typeof DetectBotsOptionsSchema>;
@@ -51,24 +51,24 @@ export interface BotDetectionResult {
 }
 
 export const PurgeActionsOptionsSchema = z.object({
-  repo: z.string().describe("GitHub repository in owner/repo format"),
-  workflow: z.string().optional().describe("Specific workflow name to purge"),
-  olderThan: z
-    .string()
-    .optional()
-    .describe('Delete runs older than this (e.g., "30d", "6m")'),
+  batchSize: z.coerce.number().int().min(1).max(100).default(50),
+  dryRun: z.boolean().default(false),
   keepLatest: z.coerce
     .number()
     .int()
     .min(0)
     .default(0)
     .describe("Number of most recent runs to keep"),
+  olderThan: z
+    .string()
+    .optional()
+    .describe('Delete runs older than this (e.g., "30d", "6m")'),
+  repo: z.string().describe("GitHub repository in owner/repo format"),
   status: z
     .string()
     .default("all")
     .describe("Workflow status or conclusion to target"),
-  dryRun: z.boolean().default(false),
-  batchSize: z.coerce.number().int().min(1).max(100).default(50),
+  workflow: z.string().optional().describe("Specific workflow name to purge"),
 });
 
 export type PurgeActionsOptions = z.infer<typeof PurgeActionsOptionsSchema>;
@@ -83,14 +83,14 @@ export interface WorkflowRun {
 }
 
 export const PurgePackagesOptionsSchema = z.object({
-  repo: z.string().describe("GitHub repository in owner/repo format"),
+  dryRun: z.boolean().default(false),
+  keepLatest: z.coerce.number().int().min(0).default(0),
+  olderThan: z.string().optional(),
+  packageName: z.string().describe("Name of the package to purge"),
   packageType: z
     .enum(["npm", "maven", "docker", "nuget", "rubygems", "container"])
     .default("container"),
-  packageName: z.string().describe("Name of the package to purge"),
-  keepLatest: z.coerce.number().int().min(0).default(0),
-  olderThan: z.string().optional(),
-  dryRun: z.boolean().default(false),
+  repo: z.string().describe("GitHub repository in owner/repo format"),
 });
 
 export type PurgePackagesOptions = z.infer<typeof PurgePackagesOptionsSchema>;
@@ -104,14 +104,14 @@ export interface PackageVersion {
 }
 
 export const PurgeReleaseOptionsSchema = z.object({
-  repo: z.string().describe("GitHub repository in owner/repo format"),
-  tag: z.string().optional(),
+  dryRun: z.boolean().default(false),
+  keepLatest: z.coerce.number().int().min(0).default(0),
   pattern: z
     .string()
     .optional()
     .describe("Delete releases matching this glob pattern"),
-  keepLatest: z.coerce.number().int().min(0).default(0),
-  dryRun: z.boolean().default(false),
+  repo: z.string().describe("GitHub repository in owner/repo format"),
+  tag: z.string().optional(),
 });
 
 export type PurgeReleaseOptions = z.infer<typeof PurgeReleaseOptionsSchema>;
@@ -127,17 +127,17 @@ export interface Release {
 }
 
 export const PurgeTagsOptionsSchema = z.object({
-  repo: z.string().describe("GitHub repository in owner/repo format"),
-  pattern: z
-    .string()
-    .optional()
-    .describe("Delete tags matching this glob pattern"),
+  dryRun: z.boolean().default(false),
   exclude: z
     .string()
     .optional()
     .describe("Exclude tags matching this glob pattern"),
   keepLatest: z.coerce.number().int().min(0).default(0),
-  dryRun: z.boolean().default(false),
+  pattern: z
+    .string()
+    .optional()
+    .describe("Delete tags matching this glob pattern"),
+  repo: z.string().describe("GitHub repository in owner/repo format"),
 });
 
 export type PurgeTagsOptions = z.infer<typeof PurgeTagsOptionsSchema>;
@@ -151,24 +151,24 @@ export interface GitTag {
 }
 
 export const ScanSecretsOptionsSchema = z.object({
-  repo: z
-    .string()
-    .optional()
-    .describe("GitHub repository in owner/repo format"),
-  local: z.boolean().default(true).describe("Scan local repository"),
-  history: z
-    .boolean()
-    .default(false)
-    .describe("Scan git history in addition to the working tree"),
   dryRun: z
     .boolean()
     .default(false)
     .describe("Show what would be scanned without scanning"),
+  format: OutputFormatSchema.default("text"),
+  history: z
+    .boolean()
+    .default(false)
+    .describe("Scan git history in addition to the working tree"),
+  local: z.boolean().default(true).describe("Scan local repository"),
   patterns: z
     .array(z.string())
     .optional()
     .describe("Custom regex patterns to search for"),
-  format: OutputFormatSchema.default("text"),
+  repo: z
+    .string()
+    .optional()
+    .describe("GitHub repository in owner/repo format"),
 });
 
 export type ScanSecretsOptions = z.infer<typeof ScanSecretsOptionsSchema>;

@@ -1,7 +1,7 @@
 import {
+  type PackageVersion,
   PurgePackagesOptionsSchema,
   parseRepoString,
-  type PackageVersion,
 } from "../../shared/types/github";
 import {
   ensureGhAuth,
@@ -11,12 +11,12 @@ import {
   runGhJson,
 } from "../shared";
 
-type GhPackageVersion = {
+interface GhPackageVersion {
   created_at: string;
   id: number;
   name: string;
   updated_at: string;
-};
+}
 
 export class PurgePackagesService {
   private readonly options: ReturnType<typeof PurgePackagesOptionsSchema.parse>;
@@ -80,7 +80,7 @@ export class PurgePackagesService {
   }
 
   private sortByDate(versions: PackageVersion[]): PackageVersion[] {
-    return [...versions].sort(
+    return [...versions].toSorted(
       (left, right) =>
         new Date(right.createdAt).getTime() -
         new Date(left.createdAt).getTime(),

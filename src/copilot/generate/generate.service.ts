@@ -2,13 +2,13 @@ import type { ICopilotClient, IGitHubClient } from "../../shared/types/copilot";
 import type { GenerateInput } from "./generate.schema";
 
 const TYPE_PROMPTS: Record<string, string> = {
-  tests:
-    "Generate comprehensive unit tests for the code. Follow testing best practices: AAA pattern, edge cases, mocks for external deps. Return only the test code.",
-  docs: "Generate clear documentation including: purpose, parameters, return values, and usage examples. Return Markdown.",
   changelog:
     "Generate a human-friendly changelog entry from the PR diff following Keep a Changelog format. Return Markdown.",
+  docs: "Generate clear documentation including: purpose, parameters, return values, and usage examples. Return Markdown.",
   summary:
     "Summarize the changes in this pull request in a concise, non-technical way suitable for a release note. Return Markdown.",
+  tests:
+    "Generate comprehensive unit tests for the code. Follow testing best practices: AAA pattern, edge cases, mocks for external deps. Return only the test code.",
 };
 
 const SYSTEM_PROMPT =

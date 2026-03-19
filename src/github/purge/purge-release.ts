@@ -10,14 +10,14 @@ import {
   runGhJson,
 } from "../shared";
 
-type GhRelease = {
+interface GhRelease {
   createdAt?: string;
   isDraft?: boolean;
   isPrerelease?: boolean;
   name?: string;
   publishedAt?: string | null;
   tagName: string;
-};
+}
 
 export class PurgeReleaseService {
   private readonly options: ReturnType<typeof PurgeReleaseOptionsSchema.parse>;

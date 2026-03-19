@@ -2,7 +2,7 @@
  * File I/O helpers for TODO.yml
  */
 
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import yaml from "js-yaml";
 import type { TodoFile } from "./types";
 

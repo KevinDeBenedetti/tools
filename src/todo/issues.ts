@@ -2,18 +2,18 @@
  * Issue sync logic: push mode (TODO.yml → Issues) and pull mode (Issues → TODO.yml)
  */
 
-import { createIssue, updateIssue, getIssue, fetchAllIssues } from "./github";
+import { createIssue, fetchAllIssues, getIssue, updateIssue } from "./github";
 import { readTodo, writeTodo } from "./files";
 import { createPRWithTodo } from "./git";
 import { ensureLabels, labelsForEntry } from "./labels";
 import {
   addComment,
-  createdComment,
-  closedComment,
   changesComment,
+  closedComment,
+  createdComment,
 } from "./comments";
-import { formatPushPRBody, formatPullPRBody } from "./formatters";
-import type { TodoEntry, GhIssue, IssueChanges, SyncLogEntry } from "./types";
+import { formatPullPRBody, formatPushPRBody } from "./formatters";
+import type { GhIssue, IssueChanges, SyncLogEntry, TodoEntry } from "./types";
 
 // ── Change detection ──────────────────────────────────────────────────────────
 
@@ -73,29 +73,29 @@ export function resolveIssue(
   if (!entry.github_id) {
     const byTitleMatch = byTitle.get(entry.title);
     if (byTitleMatch) {
-      return { issue: byTitleMatch, action: "recovered" };
+      return { action: "recovered", issue: byTitleMatch };
     }
-    return { issue: null, action: "new" };
+    return { action: "new", issue: null };
   }
 
   const byIdMatch = byNumber.get(entry.github_id);
   if (byIdMatch) {
-    return { issue: byIdMatch, action: "found" };
+    return { action: "found", issue: byIdMatch };
   }
 
-  // github_id not found — try to recover via title
+  // Github_id not found — try to recover via title
   const byTitleMatch = byTitle.get(entry.title);
   if (byTitleMatch) {
     console.warn(
       `⚠️  github_id=#${entry.github_id} not found; recovering from title match #${byTitleMatch.number}.`,
     );
-    return { issue: byTitleMatch, action: "recovered" };
+    return { action: "recovered", issue: byTitleMatch };
   }
 
   console.warn(
     `⚠️  github_id=#${entry.github_id} not found and no title match — will recreate.`,
   );
-  return { issue: null, action: "recreate" };
+  return { action: "recreate", issue: null };
 }
 
 // ── Push mode: TODO.yml → GitHub Issues ────────────────────────────────────────
@@ -121,14 +121,14 @@ export async function push(): Promise<void> {
       );
       entry.github_id = number;
       await addComment(number, createdComment(entry));
-      log.push({ issueNumber: number, title: entry.title, action: "created" });
+      log.push({ action: "created", issueNumber: number, title: entry.title });
       updated = true;
     } else if (entry.github_id !== issue.number) {
       entry.github_id = issue.number;
       log.push({
+        action: "linked",
         issueNumber: issue.number,
         title: entry.title,
-        action: "linked",
       });
       updated = true;
     } else {
@@ -137,29 +137,29 @@ export async function push(): Promise<void> {
       if (Object.keys(changes).length > 0) {
         const updates: Record<string, unknown> = {};
 
-        if (changes.title) updates["title"] = changes.title[1];
-        if (changes.body) updates["body"] = changes.body[1];
-        if (changes.state) updates["state"] = changes.state[1];
+        if (changes.title) {updates["title"] = changes.title[1];}
+        if (changes.body) {updates["body"] = changes.body[1];}
+        if (changes.state) {updates["state"] = changes.state[1];}
         if (changes.type) {
           updates["labels"] = labelsForEntry(entry);
         }
-        if (changes.assignees) updates["assignees"] = entry.assignees;
+        if (changes.assignees) {updates["assignees"] = entry.assignees;}
 
         await updateIssue(issue.number, updates);
         await addComment(issue.number, changesComment(entry, changes));
 
         log.push({
-          issueNumber: issue.number,
-          title: entry.title,
           action: "updated",
           changes,
+          issueNumber: issue.number,
+          title: entry.title,
         });
         updated = true;
       } else {
         log.push({
+          action: "unchanged",
           issueNumber: issue.number,
           title: entry.title,
-          action: "unchanged",
         });
       }
 
@@ -167,9 +167,9 @@ export async function push(): Promise<void> {
         await updateIssue(issue.number, { state: "closed" });
         await addComment(issue.number, closedComment());
         log.push({
+          action: "closed",
           issueNumber: issue.number,
           title: entry.title,
-          action: "closed",
         });
         updated = true;
       }

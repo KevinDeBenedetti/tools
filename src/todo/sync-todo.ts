@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * sync-todo — bidirectional sync between TODO.yml and GitHub Issues
+ * Sync-todo — bidirectional sync between TODO.yml and GitHub Issues
  *
  * Modes:
  *   push   TODO.yml → GitHub Issues (create/update issues from TODO.yml)
@@ -19,34 +19,38 @@
  *   bun run src/todo/sync-todo.ts labels   # Sync custom labels from labels.yml
  */
 
-import { push, pull } from "./issues";
+import { pull, push } from "./issues";
 import { syncLabels } from "./labels";
 
 const mode = process.argv[2];
 
 switch (mode) {
-  case "push":
+  case "push": {
     push().catch((err) => {
       console.error((err as Error).message);
       process.exit(1);
     });
     break;
+  }
 
-  case "pull":
+  case "pull": {
     pull().catch((err) => {
       console.error((err as Error).message);
       process.exit(1);
     });
     break;
+  }
 
-  case "labels":
+  case "labels": {
     syncLabels().catch((err) => {
       console.error((err as Error).message);
       process.exit(1);
     });
     break;
+  }
 
-  default:
+  default: {
     console.error("Usage: bun run src/todo/sync-todo.ts push|pull|labels");
     process.exit(1);
+  }
 }
