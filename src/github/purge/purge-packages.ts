@@ -80,8 +80,8 @@ export class PurgePackagesService {
   }
 
   private sortByDate(versions: PackageVersion[]): PackageVersion[] {
-    return [...versions].toSorted(
-      (left, right) =>
+    return [...versions].sort(
+      (left: PackageVersion, right: PackageVersion) =>
         new Date(right.createdAt).getTime() -
         new Date(left.createdAt).getTime(),
     );
