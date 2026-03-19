@@ -2,18 +2,18 @@
  * Label sync logic: ensure labels exist on GitHub repo
  */
 
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import yaml from "js-yaml";
-import { createLabel, updateLabel, repoSlug } from "./github";
-import type { TodoEntry, LabelDef, LabelsFile } from "./types";
-import { typeLabels, statusLabels, priorityLabels } from "./types";
+import { createLabel, repoSlug, updateLabel } from "./github";
+import type { LabelDef, LabelsFile, TodoEntry } from "./types";
+import { priorityLabels, statusLabels, typeLabels } from "./types";
 
 export async function ensureLabel(def: LabelDef): Promise<void> {
   try {
     await createLabel(def.name, def.color, def.description);
-  } catch (err) {
-    if (!(err instanceof Error) || !err.message.includes("already exists"))
-      throw err;
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes("already exists"))
+      throw error;
     await updateLabel(def.name, def.name, def.color, def.description);
   }
 }
@@ -34,13 +34,13 @@ export function labelsForEntry(entry: TodoEntry): string[] {
   const labels: string[] = [];
 
   const typeLabel = typeLabels[entry.type];
-  if (typeLabel) labels.push(typeLabel.name);
+  if (typeLabel) {labels.push(typeLabel.name);}
 
   const statusLabel = statusLabels[entry.status];
-  if (statusLabel) labels.push(statusLabel.name);
+  if (statusLabel) {labels.push(statusLabel.name);}
 
   const priorityLabel = priorityLabels[entry.priority];
-  if (priorityLabel) labels.push(priorityLabel.name);
+  if (priorityLabel) {labels.push(priorityLabel.name);}
 
   return labels;
 }
@@ -62,9 +62,9 @@ export async function syncLabels(): Promise<void> {
     try {
       await createLabel(def.name, def.color, def.description);
       console.log(`  created: ${def.name}`);
-    } catch (err) {
-      if (!(err instanceof Error) || !err.message.includes("already exists"))
-        throw err;
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes("already exists"))
+        throw error;
       await updateLabel(def.name, def.name, def.color, def.description);
       console.log(`  updated: ${def.name}`);
     }

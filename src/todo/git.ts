@@ -3,12 +3,12 @@
  */
 
 import {
-  createRef,
   createPR,
+  createRef,
   getRefSha,
-  updateRef,
-  searchPRs,
   resolveRepo,
+  searchPRs,
+  updateRef,
 } from "./github";
 
 // ── Branch operations ──────────────────────────────────────────────────────────
@@ -46,7 +46,7 @@ export async function pushTodoToBranch(branch: string): Promise<void> {
       "--jq",
       ".sha",
     ],
-    { stdout: "pipe", stderr: "pipe" },
+    { stderr: "pipe", stdout: "pipe" },
   );
   const [shaOut, shaErr, shaCode] = await Promise.all([
     new Response(proc.stdout).text(),
@@ -78,7 +78,7 @@ export async function pushTodoToBranch(branch: string): Promise<void> {
       "-f",
       `sha=${baseSha}`,
     ],
-    { stdout: "pipe", stderr: "pipe" },
+    { stderr: "pipe", stdout: "pipe" },
   );
   const [, putErr, putCode] = await Promise.all([
     new Response(proc2.stdout).text(),
@@ -100,10 +100,10 @@ export async function findOpenSyncPR(): Promise<{
     const prs = await searchPRs("sync/todo-yml-push-main");
     const pr = prs[0];
     if (pr && pr.number && pr.html_url) {
-      return { number: pr.number, html_url: pr.html_url };
+      return { html_url: pr.html_url, number: pr.number };
     }
   } catch {
-    // silently ignore
+    // Silently ignore
   }
   return null;
 }
@@ -133,9 +133,9 @@ export async function createPRWithTodo(
   try {
     const pr = await createPR(branchName, "main", prTitle, prBody);
     console.log(`  created PR #${pr.number}`);
-  } catch (err) {
-    if (!(err instanceof Error) || !err.message.includes("already exists"))
-      throw err;
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes("already exists"))
+      throw error;
     console.log(`  PR already exists`);
   }
 }

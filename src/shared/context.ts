@@ -26,11 +26,11 @@ export async function buildContext(): Promise<ToolContext> {
       throw new ValidationError("options must be a JSON object");
     }
     options = parsed;
-  } catch (err) {
-    if (err instanceof ValidationError) throw err;
+  } catch (error) {
+    if (error instanceof ValidationError) throw error;
     throw new ValidationError(
       `Invalid JSON in "options" input: ${optionsRaw}`,
-      err,
+      error,
     );
   }
 
@@ -40,12 +40,12 @@ export async function buildContext(): Promise<ToolContext> {
     typeof pullRequest?.number === "number" ? pullRequest.number : undefined;
 
   return {
-    token,
-    repo: { owner, repo },
-    prNumber,
-    options,
     copilot: new CopilotClient(token, model),
     github: new GitHubClient(token),
     logger: new ActionsLogger(),
+    options,
+    prNumber,
+    repo: { owner, repo },
+    token,
   };
 }

@@ -16,9 +16,9 @@ export class GenerateTool implements ITool {
     ctx.logger.info(`Generation complete (type: ${opts.type})`);
 
     return {
+      outputs: { generated: output },
       success: true,
       summary: `Generated ${opts.type} successfully`,
-      outputs: { generated: output },
     };
   }
 }

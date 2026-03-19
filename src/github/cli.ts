@@ -18,25 +18,25 @@ type Command =
   | "purge-tags"
   | "scan-secrets";
 
-type ParsedInput = {
+interface ParsedInput {
   command: Command | undefined;
   help: boolean;
   interactive: boolean;
   options: Record<string, unknown>;
-};
+}
 
-type CommandDef = {
+interface CommandDef {
   description: string;
   flags: FlagDef[];
-};
+}
 
-type FlagDef = {
+interface FlagDef {
   name: string;
   description: string;
   type: "string" | "boolean" | "number" | "string[]";
   default?: unknown;
   required?: boolean;
-};
+}
 
 // ── Command definitions ────────────────────────────────────────────────────────
 
@@ -44,28 +44,28 @@ const COMMANDS: Record<Command, CommandDef> = {
   "detect-bots": {
     description: "Detect bot commits in a GitHub repository",
     flags: [
-      { name: "repo", description: "GitHub repo (owner/repo)", type: "string" },
+      { description: "GitHub repo (owner/repo)", name: "repo", type: "string" },
       {
-        name: "local",
-        description: "Scan local repository",
-        type: "boolean",
         default: true,
+        description: "Scan local repository",
+        name: "local",
+        type: "boolean",
       },
       {
-        name: "dryRun",
         description: "Show what would be done without doing it",
+        name: "dryRun",
         type: "boolean",
       },
       {
-        name: "purgeBots",
         description: "Remove bot commits from Git history",
+        name: "purgeBots",
         type: "boolean",
       },
       {
-        name: "format",
-        description: "Output format (text|json)",
-        type: "string",
         default: "text",
+        description: "Output format (text|json)",
+        name: "format",
+        type: "string",
       },
     ],
   },
@@ -73,43 +73,43 @@ const COMMANDS: Record<Command, CommandDef> = {
     description: "Delete GitHub Actions workflow runs",
     flags: [
       {
-        name: "repo",
         description: "GitHub repo (owner/repo)",
-        type: "string",
+        name: "repo",
         required: true,
+        type: "string",
       },
       {
-        name: "workflow",
         description: "Specific workflow name",
+        name: "workflow",
         type: "string",
       },
       {
-        name: "olderThan",
         description: "Delete runs older than (e.g. 30d, 6m)",
+        name: "olderThan",
         type: "string",
       },
       {
-        name: "keepLatest",
-        description: "Number of most recent runs to keep",
-        type: "number",
         default: 0,
+        description: "Number of most recent runs to keep",
+        name: "keepLatest",
+        type: "number",
       },
       {
-        name: "status",
-        description: "Workflow status or conclusion",
-        type: "string",
         default: "all",
+        description: "Workflow status or conclusion",
+        name: "status",
+        type: "string",
       },
       {
-        name: "dryRun",
         description: "Preview without deleting",
+        name: "dryRun",
         type: "boolean",
       },
       {
-        name: "batchSize",
-        description: "Batch size for deletions",
-        type: "number",
         default: 50,
+        description: "Batch size for deletions",
+        name: "batchSize",
+        type: "number",
       },
     ],
   },
@@ -117,37 +117,37 @@ const COMMANDS: Record<Command, CommandDef> = {
     description: "Delete package versions from GitHub Packages",
     flags: [
       {
-        name: "repo",
         description: "GitHub repo (owner/repo)",
-        type: "string",
+        name: "repo",
         required: true,
+        type: "string",
       },
       {
-        name: "packageType",
-        description: "Package type (npm|docker|container|...)",
-        type: "string",
         default: "container",
+        description: "Package type (npm|docker|container|...)",
+        name: "packageType",
+        type: "string",
       },
       {
-        name: "packageName",
         description: "Name of the package",
-        type: "string",
+        name: "packageName",
         required: true,
-      },
-      {
-        name: "keepLatest",
-        description: "Number of most recent versions to keep",
-        type: "number",
-        default: 0,
-      },
-      {
-        name: "olderThan",
-        description: "Delete versions older than (e.g. 30d)",
         type: "string",
       },
       {
-        name: "dryRun",
+        default: 0,
+        description: "Number of most recent versions to keep",
+        name: "keepLatest",
+        type: "number",
+      },
+      {
+        description: "Delete versions older than (e.g. 30d)",
+        name: "olderThan",
+        type: "string",
+      },
+      {
         description: "Preview without deleting",
+        name: "dryRun",
         type: "boolean",
       },
     ],
@@ -156,30 +156,30 @@ const COMMANDS: Record<Command, CommandDef> = {
     description: "Delete GitHub Releases by tag or pattern",
     flags: [
       {
-        name: "repo",
         description: "GitHub repo (owner/repo)",
-        type: "string",
+        name: "repo",
         required: true,
+        type: "string",
       },
       {
-        name: "tag",
         description: "Specific release tag to delete",
+        name: "tag",
         type: "string",
       },
       {
-        name: "pattern",
         description: "Glob pattern matching release tags",
+        name: "pattern",
         type: "string",
       },
       {
-        name: "keepLatest",
-        description: "Number of most recent releases to keep",
-        type: "number",
         default: 0,
+        description: "Number of most recent releases to keep",
+        name: "keepLatest",
+        type: "number",
       },
       {
-        name: "dryRun",
         description: "Preview without deleting",
+        name: "dryRun",
         type: "boolean",
       },
     ],
@@ -188,30 +188,30 @@ const COMMANDS: Record<Command, CommandDef> = {
     description: "Delete Git tags by pattern",
     flags: [
       {
-        name: "repo",
         description: "GitHub repo (owner/repo)",
-        type: "string",
+        name: "repo",
         required: true,
+        type: "string",
       },
       {
-        name: "pattern",
         description: "Glob pattern matching tag names to delete",
+        name: "pattern",
         type: "string",
       },
       {
-        name: "exclude",
         description: "Glob pattern for tags to exclude",
+        name: "exclude",
         type: "string",
       },
       {
-        name: "keepLatest",
-        description: "Number of most recent tags to keep",
-        type: "number",
         default: 0,
+        description: "Number of most recent tags to keep",
+        name: "keepLatest",
+        type: "number",
       },
       {
-        name: "dryRun",
         description: "Preview without deleting",
+        name: "dryRun",
         type: "boolean",
       },
     ],
@@ -219,29 +219,29 @@ const COMMANDS: Record<Command, CommandDef> = {
   "scan-secrets": {
     description: "Scan a repository for leaked secrets",
     flags: [
-      { name: "repo", description: "GitHub repo (owner/repo)", type: "string" },
+      { description: "GitHub repo (owner/repo)", name: "repo", type: "string" },
       {
-        name: "local",
-        description: "Scan local repository",
-        type: "boolean",
         default: true,
+        description: "Scan local repository",
+        name: "local",
+        type: "boolean",
       },
-      { name: "history", description: "Scan git history too", type: "boolean" },
+      { description: "Scan git history too", name: "history", type: "boolean" },
       {
-        name: "dryRun",
         description: "Preview without scanning",
+        name: "dryRun",
         type: "boolean",
       },
       {
-        name: "patterns",
         description: "Custom regex patterns",
+        name: "patterns",
         type: "string[]",
       },
       {
-        name: "format",
-        description: "Output format (text|json)",
-        type: "string",
         default: "text",
+        description: "Output format (text|json)",
+        name: "format",
+        type: "string",
       },
     ],
   },
@@ -288,13 +288,13 @@ export function parseCliInput(argv: string[]): ParsedInput {
         value = arg.slice(eqIdx + 1);
       } else {
         key = toCamelCase(arg.slice(2));
-        // peek next arg for value if it doesn't look like a flag
+        // Peek next arg for value if it doesn't look like a flag
         if (args.length > 0 && !args[0]!.startsWith("-")) {
           value = args.shift()!;
         }
       }
 
-      // resolve type
+      // Resolve type
       const existing = options[key];
       let parsed: unknown;
 
@@ -320,7 +320,7 @@ export function parseCliInput(argv: string[]): ParsedInput {
       continue;
     }
 
-    // positional
+    // Positional
     if (!arg.startsWith("-")) {
       if (command !== undefined) {
         throw new Error(`Unexpected positional argument: ${arg}`);
@@ -366,7 +366,7 @@ export function formatGeneralHelp(): string {
 
 export function formatCommandHelp(command: Command | string): string {
   const def = COMMANDS[command as Command];
-  if (!def) return `Unknown command: ${command}`;
+  if (!def) {return `Unknown command: ${command}`;}
 
   const lines: string[] = [
     `${color.bold(command)} — ${def.description}`,
@@ -393,10 +393,10 @@ export function shouldUseInteractive(
   parsed: ParsedInput,
   isTTY: boolean,
 ): boolean {
-  if (parsed.help) return false;
-  if (parsed.interactive) return true;
-  if (!isTTY) return false;
-  if (parsed.command) return false;
+  if (parsed.help) {return false;}
+  if (parsed.interactive) {return true;}
+  if (!isTTY) {return false;}
+  if (parsed.command) {return false;}
   return true;
 }
 
@@ -418,7 +418,7 @@ export function buildCommandPreview(
     } else if (value === true) {
       flags.push(flag);
     } else if (value === false || value === undefined) {
-      // omit
+      // Omit
     } else {
       const strVal = String(value);
       flags.push(
@@ -428,7 +428,7 @@ export function buildCommandPreview(
   }
 
   const base = `bun run github:${command}`;
-  if (flags.length === 0) return base;
+  if (flags.length === 0) {return base;}
   return `${base} -- ${flags.join(" ")}`;
 }
 
@@ -439,13 +439,13 @@ async function promptString(
   placeholder?: string,
 ): Promise<string | undefined> {
   const val = await p.text({ message: label, placeholder });
-  if (p.isCancel(val)) return undefined;
+  if (p.isCancel(val)) {return undefined;}
   return (val as string) || undefined;
 }
 
 async function promptBoolean(label: string): Promise<boolean> {
-  const val = await p.confirm({ message: label, initialValue: false });
-  if (p.isCancel(val)) return false;
+  const val = await p.confirm({ initialValue: false, message: label });
+  if (p.isCancel(val)) {return false;}
   return val as boolean;
 }
 
@@ -457,7 +457,7 @@ async function promptNumber(
     message: label,
     placeholder: defaultValue !== undefined ? String(defaultValue) : undefined,
   });
-  if (p.isCancel(val) || !val) return defaultValue ?? 0;
+  if (p.isCancel(val) || !val) {return defaultValue ?? 0;}
   const n = Number(val);
   return Number.isNaN(n) ? (defaultValue ?? 0) : n;
 }
@@ -471,7 +471,7 @@ async function collectOptions(
   for (const flag of def.flags) {
     if (flag.type === "boolean") {
       const val = await promptBoolean(flag.description);
-      if (val) options[flag.name] = true;
+      if (val) {options[flag.name] = true;}
     } else if (flag.type === "number") {
       const val = await promptNumber(
         `${flag.description} (number)`,
@@ -483,7 +483,7 @@ async function collectOptions(
         flag.description,
         flag.default ? String(flag.default) : undefined,
       );
-      if (val) options[flag.name] = flag.type === "string[]" ? [val] : val;
+      if (val) {options[flag.name] = flag.type === "string[]" ? [val] : val;}
     }
   }
 
@@ -496,9 +496,9 @@ async function runInteractive(): Promise<void> {
   const selected = await p.select({
     message: "Which tool do you want to run?",
     options: COMMAND_NAMES.map((name) => ({
-      value: name,
-      label: name,
       hint: COMMANDS[name].description,
+      label: name,
+      value: name,
     })),
   });
 

@@ -7,7 +7,7 @@
 
 import { push } from "./issues";
 
-push().catch((err) => {
-  console.error(`Fatal: ${err}`);
+push().catch((error) => {
+  console.error(`Fatal: ${error}`);
   process.exit(1);
 });

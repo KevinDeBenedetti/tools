@@ -1,15 +1,15 @@
 import { ValidationError, toMessage } from "./errors";
 
-type CommandResult = {
+interface CommandResult {
   exitCode: number;
   stderr: string;
   stdout: string;
-};
+}
 
-type RunCommandOptions = {
+interface RunCommandOptions {
   allowFailure?: boolean;
   cwd?: string;
-};
+}
 
 export async function runCommand(
   cmd: string[],
@@ -82,10 +82,12 @@ export function parseDuration(duration: string): Date {
   const now = new Date();
 
   switch (unit) {
-    case "h":
+    case "h": {
       return new Date(now.getTime() - value * 60 * 60 * 1000);
-    case "d":
+    }
+    case "d": {
       return new Date(now.getTime() - value * 24 * 60 * 60 * 1000);
+    }
     case "m": {
       const next = new Date(now);
       next.setMonth(next.getMonth() - value);
@@ -96,13 +98,14 @@ export function parseDuration(duration: string): Date {
       next.setFullYear(next.getFullYear() - value);
       return next;
     }
-    default:
+    default: {
       throw new ValidationError(`Invalid duration unit: ${unit}`);
+    }
   }
 }
 
 function escapeRegex(value: string): string {
-  return value.replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
+  return value.replace(/[|\\{}()[\]^$+?.]/g, String.raw`\$&`);
 }
 
 export function globToRegExp(pattern: string): RegExp {

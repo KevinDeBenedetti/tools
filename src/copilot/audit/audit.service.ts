@@ -17,13 +17,13 @@ export interface AuditReport {
 }
 
 const SCOPE_DESCRIPTIONS: Record<string, string> = {
+  all: "Perform a comprehensive audit covering dependencies, secrets, and licenses.",
   dependencies:
     "Check for known vulnerabilities in dependencies (CVEs, outdated packages, supply-chain risks).",
-  secrets:
-    "Scan for accidentally committed secrets, tokens, API keys, or credentials.",
   licenses:
     "Identify license compatibility issues and GPL/copyleft contamination.",
-  all: "Perform a comprehensive audit covering dependencies, secrets, and licenses.",
+  secrets:
+    "Scan for accidentally committed secrets, tokens, API keys, or credentials.",
 };
 
 const SYSTEM_PROMPT = `
@@ -46,16 +46,16 @@ Return ONLY valid JSON — no prose, no markdown fences.
 const SEVERITY_ORDER: Record<string, number> = {
   critical: 4,
   high: 3,
-  medium: 2,
   low: 1,
+  medium: 2,
   none: 0,
 };
 
 const auditFindingSchema = z.object({
-  severity: z.enum(["critical", "high", "medium", "low"]),
   category: z.string().min(1),
   description: z.string().min(1),
   recommendation: z.string().min(1),
+  severity: z.enum(["critical", "high", "medium", "low"]),
 });
 
 const auditResponseSchema = z.object({
@@ -98,7 +98,7 @@ export class AuditService {
         .replace(/\n?```$/, "")
         .trim();
       const parsed = auditResponseSchema.parse(JSON.parse(cleaned));
-      const findings = parsed.findings;
+      const {findings} = parsed;
       const failThreshold = SEVERITY_ORDER[failOn] ?? 0;
       const passed =
         failThreshold === 0 ||

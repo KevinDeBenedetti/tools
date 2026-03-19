@@ -5,8 +5,8 @@ import { AuditTool } from "./copilot/audit";
 import type { ITool } from "./shared/types/copilot";
 
 export const registry: Record<string, new () => ITool> = {
-  review: ReviewTool,
   analyze: AnalyzeTool,
-  generate: GenerateTool,
   audit: AuditTool,
+  generate: GenerateTool,
+  review: ReviewTool,
 };

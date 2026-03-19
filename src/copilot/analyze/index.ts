@@ -23,9 +23,9 @@ export class AnalyzeTool implements ITool {
     ctx.logger.info(`Analysis complete for PR #${ctx.prNumber}`);
 
     return {
+      outputs: { report },
       success: true,
       summary: `Analysis complete for PR #${ctx.prNumber} (target: ${opts.target})`,
-      outputs: { report },
     };
   }
 }

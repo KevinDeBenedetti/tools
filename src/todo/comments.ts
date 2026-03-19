@@ -3,7 +3,7 @@
  */
 
 import { addComment as ghAddComment, repoSlug } from "./github";
-import type { TodoEntry, IssueChanges } from "./types";
+import type { IssueChanges, TodoEntry } from "./types";
 
 export async function addComment(number: number, body: string): Promise<void> {
   const [owner = "", repo = ""] = repoSlug().split("/");

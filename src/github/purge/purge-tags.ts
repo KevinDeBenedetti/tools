@@ -1,4 +1,4 @@
-import { PurgeTagsOptionsSchema, type GitTag } from "../../shared/types/github";
+import { type GitTag, PurgeTagsOptionsSchema } from "../../shared/types/github";
 import { ensureGhAuth, formatError, matchesPattern, runGh } from "../shared";
 
 export class PurgeTagsService {

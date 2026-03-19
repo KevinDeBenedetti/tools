@@ -32,7 +32,7 @@ function syncIssueToTodo(): void {
   );
   console.log(`Issue #${issueNumber}: "${issueTitle}" [${issueState}]\n`);
 
-  let entry = todoFile.issues.find((e) => e.github_id === issueNumber);
+  const entry = todoFile.issues.find((e) => e.github_id === issueNumber);
 
   if (entry) {
     const oldStatus = entry.status;
@@ -54,13 +54,13 @@ function syncIssueToTodo(): void {
     console.log(`  status: ${newStatus}`);
 
     todoFile.issues.push({
-      id: newId,
-      title: issueTitle,
-      github_id: issueNumber,
-      status: newStatus,
-      priority: "medium",
-      type: "feat",
       assignees: [],
+      github_id: issueNumber,
+      id: newId,
+      priority: "medium",
+      status: newStatus,
+      title: issueTitle,
+      type: "feat",
     });
   }
 

@@ -10,22 +10,22 @@ import {
 import { formatError } from "../shared";
 
 const DEFAULT_SECRET_PATTERNS = [
-  { name: "OpenAI-style key", expression: "sk-[A-Za-z0-9_-]{16,}" },
+  { expression: "sk-[A-Za-z0-9_-]{16,}", name: "OpenAI-style key" },
   {
-    name: "AWS secret access key",
     expression: "AWS_SECRET_ACCESS_KEY\\s*=\\s*[\"']?[A-Za-z0-9/+=]{40}",
+    name: "AWS secret access key",
   },
-  { name: "GitHub token", expression: "gh[pousr]_[A-Za-z0-9]{20,}" },
+  { expression: "gh[pousr]_[A-Za-z0-9]{20,}", name: "GitHub token" },
   {
-    name: "Private key",
     expression: "-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----",
+    name: "Private key",
   },
 ];
 
-type ScanTarget = {
+interface ScanTarget {
   cleanupPath?: string;
   repoPath: string;
-};
+}
 
 export class ScanSecretsService {
   private readonly options: ReturnType<typeof ScanSecretsOptionsSchema.parse>;
@@ -45,9 +45,9 @@ export class ScanSecretsService {
       const matchedFiles = new Set(secrets.map((secret) => secret.file)).size;
 
       return {
-        totalFiles: matchedFiles,
         matchedFiles,
         secrets,
+        totalFiles: matchedFiles,
       };
     } finally {
       if (target.cleanupPath) {
@@ -107,7 +107,7 @@ export class ScanSecretsService {
       );
 
       execFileSync("gh", ["repo", "clone", this.options.repo, repoPath], {
-        encoding: "utf-8",
+        encoding: "utf8",
         stdio: "pipe",
       });
 
@@ -115,14 +115,14 @@ export class ScanSecretsService {
     }
 
     const repoPath = execFileSync("git", ["rev-parse", "--show-toplevel"], {
-      encoding: "utf-8",
+      encoding: "utf8",
       stdio: "pipe",
     }).trim();
 
     return { repoPath };
   }
 
-  private getPatterns(): Array<{ expression: string; name: string }> {
+  private getPatterns(): { expression: string; name: string }[] {
     if (!this.options.patterns || this.options.patterns.length === 0) {
       return DEFAULT_SECRET_PATTERNS;
     }
@@ -170,8 +170,8 @@ export class ScanSecretsService {
           commit,
           file: "<history>",
           line: 1,
-          pattern: pattern.name,
           match: `Matched in commit ${commit}`,
+          pattern: pattern.name,
         });
       }
     }
@@ -182,7 +182,7 @@ export class ScanSecretsService {
   private runGitSearch(repoPath: string, args: string[]): string {
     try {
       return execFileSync("git", ["-C", repoPath, ...args], {
-        encoding: "utf-8",
+        encoding: "utf8",
         stdio: "pipe",
       });
     } catch (error) {
@@ -209,8 +209,8 @@ export class ScanSecretsService {
         return {
           file: file ?? "<unknown>",
           line: Number.parseInt(lineNumber ?? "1", 10) || 1,
-          pattern: patternName,
           match: matchParts.join(":").trim(),
+          pattern: patternName,
         };
       });
   }

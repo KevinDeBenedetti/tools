@@ -18,20 +18,20 @@ export class AuditTool implements ITool {
     );
 
     const annotations = report.findings.map((f) => ({
-      path: "audit",
       line: 1,
       message: `[${f.severity.toUpperCase()}] ${f.category}: ${f.description}`,
+      path: "audit",
     }));
 
     return {
-      success: report.passed,
-      summary: report.summary,
       annotations,
       outputs: {
         findings: String(report.findings.length),
         passed: String(report.passed),
         report: JSON.stringify(report, null, 2),
       },
+      success: report.passed,
+      summary: report.summary,
     };
   }
 }

@@ -3,9 +3,9 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  DetectBotsOptionsSchema,
   type BotCommit,
   type BotDetectionResult,
+  DetectBotsOptionsSchema,
 } from "../../shared/types/github";
 import { formatError } from "../shared";
 
@@ -24,19 +24,19 @@ const DEFAULT_BOT_PATTERNS = [
   "[bot]",
 ];
 
-type CommitRecord = {
+interface CommitRecord {
   author: string;
   body: string;
   date: string;
   email: string;
   message: string;
   sha: string;
-};
+}
 
-type DetectionTarget = {
+interface DetectionTarget {
   cleanupPath?: string;
   repoPath: string;
-};
+}
 
 export class DetectBotsService {
   private readonly options: ReturnType<typeof DetectBotsOptionsSchema.parse>;
@@ -51,7 +51,7 @@ export class DetectBotsService {
     try {
       if (this.options.dryRun) {
         console.log("[DRY RUN] Would scan repository:", target.repoPath);
-        return { totalCommits: 0, botCommits: [], percentage: 0 };
+        return { botCommits: [], percentage: 0, totalCommits: 0 };
       }
 
       const commits = this.getAllCommits(target.repoPath);
@@ -62,10 +62,10 @@ export class DetectBotsService {
       }
 
       return {
-        totalCommits: commits.length,
         botCommits,
         percentage:
           commits.length > 0 ? (botCommits.length / commits.length) * 100 : 0,
+        totalCommits: commits.length,
       };
     } finally {
       if (target.cleanupPath && !this.options.purgeBots) {
@@ -104,7 +104,7 @@ export class DetectBotsService {
       );
 
       execFileSync("gh", ["repo", "clone", this.options.repo, repoPath], {
-        encoding: "utf-8",
+        encoding: "utf8",
         stdio: "pipe",
       });
 
@@ -112,7 +112,7 @@ export class DetectBotsService {
     }
 
     const repoPath = execFileSync("git", ["rev-parse", "--show-toplevel"], {
-      encoding: "utf-8",
+      encoding: "utf8",
       stdio: "pipe",
     }).trim();
 
@@ -130,7 +130,7 @@ export class DetectBotsService {
         "--format=%H%x1f%an%x1f%ae%x1f%s%x1f%b%x1f%aI%x1e",
       ],
       {
-        encoding: "utf-8",
+        encoding: "utf8",
         maxBuffer: 50 * 1024 * 1024,
         stdio: "pipe",
       },
@@ -143,12 +143,12 @@ export class DetectBotsService {
       .map((entry) => {
         const [sha, author, email, message, body, date] = entry.split("\x1f");
         return {
-          sha: sha ?? "",
           author: author ?? "",
-          email: email ?? "",
-          message: message ?? "",
           body: body ?? "",
           date: date ?? "",
+          email: email ?? "",
+          message: message ?? "",
+          sha: sha ?? "",
         };
       });
   }
@@ -185,7 +185,7 @@ export class DetectBotsService {
       .map((commit) => `<${commit.email}> <${commit.email}>`)
       .join("\n");
 
-    writeFileSync(mailmapFile, mailmap, "utf-8");
+    writeFileSync(mailmapFile, mailmap, "utf8");
 
     try {
       execFileSync(
