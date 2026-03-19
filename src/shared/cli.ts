@@ -37,26 +37,17 @@ export async function runCommand(
   return { exitCode, stderr, stdout };
 }
 
-export async function runGh(
-  args: string[],
-  options?: RunCommandOptions,
-): Promise<CommandResult> {
+export async function runGh(args: string[], options?: RunCommandOptions): Promise<CommandResult> {
   return runCommand(["gh", ...args], options);
 }
 
-export async function runGhJson<T>(
-  args: string[],
-  options?: RunCommandOptions,
-): Promise<T> {
+export async function runGhJson<T>(args: string[], options?: RunCommandOptions): Promise<T> {
   const result = await runGh(args, options);
 
   try {
     return JSON.parse(result.stdout) as T;
   } catch (error) {
-    throw new ValidationError(
-      `Could not parse JSON output from: gh ${args.join(" ")}`,
-      error,
-    );
+    throw new ValidationError(`Could not parse JSON output from: gh ${args.join(" ")}`, error);
   }
 }
 
@@ -109,9 +100,7 @@ function escapeRegex(value: string): string {
 }
 
 export function globToRegExp(pattern: string): RegExp {
-  const normalized = escapeRegex(pattern)
-    .replaceAll("*", ".*")
-    .replaceAll("?", ".");
+  const normalized = escapeRegex(pattern).replaceAll("*", ".*").replaceAll("?", ".");
 
   return new RegExp(`^${normalized}$`);
 }

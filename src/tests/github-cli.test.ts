@@ -9,15 +9,7 @@ import {
 
 describe("parseCliInput", () => {
   test("parses command, flags, and values", () => {
-    expect(
-      parseCliInput([
-        "detect-bots",
-        "--local",
-        "--dry-run",
-        "--format",
-        "json",
-      ]),
-    ).toEqual({
+    expect(parseCliInput(["detect-bots", "--local", "--dry-run", "--format", "json"])).toEqual({
       command: "detect-bots",
       help: false,
       interactive: false,
@@ -26,9 +18,7 @@ describe("parseCliInput", () => {
   });
 
   test("parses repeated flags into arrays", () => {
-    expect(
-      parseCliInput(["scan-secrets", "--pattern", "a", "--pattern=b"]),
-    ).toEqual({
+    expect(parseCliInput(["scan-secrets", "--pattern", "a", "--pattern=b"])).toEqual({
       command: "scan-secrets",
       help: false,
       interactive: false,
@@ -117,9 +107,7 @@ describe("shouldUseInteractive", () => {
   });
 
   test("returns true when --interactive is set", () => {
-    expect(shouldUseInteractive(parseCliInput(["--interactive"]), true)).toBe(
-      true,
-    );
+    expect(shouldUseInteractive(parseCliInput(["--interactive"]), true)).toBe(true);
   });
 
   test("returns false when not a TTY", () => {
@@ -127,17 +115,15 @@ describe("shouldUseInteractive", () => {
   });
 
   test("returns false when command is provided", () => {
-    expect(shouldUseInteractive(parseCliInput(["detect-bots"]), true)).toBe(
-      false,
-    );
+    expect(shouldUseInteractive(parseCliInput(["detect-bots"]), true)).toBe(false);
   });
 });
 
 describe("buildCommandPreview", () => {
   test("renders boolean flags", () => {
-    expect(
-      buildCommandPreview("detect-bots", { dryRun: true, local: true }),
-    ).toBe("bun run github:detect-bots -- --dry-run --local");
+    expect(buildCommandPreview("detect-bots", { dryRun: true, local: true })).toBe(
+      "bun run github:detect-bots -- --dry-run --local",
+    );
   });
 
   test("quotes values with spaces", () => {
@@ -146,15 +132,11 @@ describe("buildCommandPreview", () => {
         repo: "owner/repo",
         workflow: "ci main",
       }),
-    ).toBe(
-      'bun run github:purge-actions -- --repo owner/repo --workflow "ci main"',
-    );
+    ).toBe('bun run github:purge-actions -- --repo owner/repo --workflow "ci main"');
   });
 
   test("renders no args when options empty", () => {
-    expect(buildCommandPreview("scan-secrets", {})).toBe(
-      "bun run github:scan-secrets",
-    );
+    expect(buildCommandPreview("scan-secrets", {})).toBe("bun run github:scan-secrets");
   });
 
   test("omits false boolean flags", () => {

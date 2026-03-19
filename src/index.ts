@@ -8,9 +8,7 @@ async function main(): Promise<void> {
   const Tool = registry[toolName];
 
   if (!Tool) {
-    core.setFailed(
-      `Unknown tool: "${toolName}". Available: ${Object.keys(registry).join(", ")}`,
-    );
+    core.setFailed(`Unknown tool: "${toolName}". Available: ${Object.keys(registry).join(", ")}`);
     process.exitCode = 1;
     return;
   }

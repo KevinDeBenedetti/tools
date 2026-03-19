@@ -1,8 +1,4 @@
-import type {
-  ITool,
-  ToolContext,
-  ToolResult,
-} from "../../shared/types/copilot";
+import type { ITool, ToolContext, ToolResult } from "../../shared/types/copilot";
 import { analyzeInputSchema } from "./analyze.schema";
 import { AnalyzeService } from "./analyze.service";
 
@@ -11,8 +7,7 @@ export class AnalyzeTool implements ITool {
     if (!ctx.prNumber) {
       return {
         success: false,
-        summary:
-          "No pull_request context found. The analyze tool requires a PR number.",
+        summary: "No pull_request context found. The analyze tool requires a PR number.",
       };
     }
 

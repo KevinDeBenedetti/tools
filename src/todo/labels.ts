@@ -12,8 +12,7 @@ export async function ensureLabel(def: LabelDef): Promise<void> {
   try {
     await createLabel(def.name, def.color, def.description);
   } catch (error) {
-    if (!(error instanceof Error) || !error.message.includes("already exists"))
-      throw error;
+    if (!(error instanceof Error) || !error.message.includes("already exists")) throw error;
     await updateLabel(def.name, def.name, def.color, def.description);
   }
 }
@@ -69,11 +68,7 @@ export async function syncLabels(): Promise<void> {
       await createLabel(def.name, def.color, def.description);
       console.log(`  created: ${def.name}`);
     } catch (error) {
-      if (
-        !(error instanceof Error) ||
-        !error.message.includes("already exists")
-      )
-        throw error;
+      if (!(error instanceof Error) || !error.message.includes("already exists")) throw error;
       await updateLabel(def.name, def.name, def.color, def.description);
       console.log(`  updated: ${def.name}`);
     }

@@ -44,13 +44,7 @@ export class PurgeTagsService {
 
   private async getAllTags(): Promise<GitTag[]> {
     const result = await runGh(
-      [
-        "api",
-        `repos/${this.options.repo}/tags`,
-        "--paginate",
-        "--jq",
-        ".[].name",
-      ],
+      ["api", `repos/${this.options.repo}/tags`, "--paginate", "--jq", ".[].name"],
       { allowFailure: false },
     );
 

@@ -199,10 +199,7 @@ export async function updateLabel(
 export async function getRefSha(ref: string): Promise<string> {
   try {
     const { owner, repo } = resolveRepo();
-    const result = await runGhJson<GhRef>([
-      "api",
-      `repos/${owner}/${repo}/git/refs/heads/${ref}`,
-    ]);
+    const result = await runGhJson<GhRef>(["api", `repos/${owner}/${repo}/git/refs/heads/${ref}`]);
     return result.object.sha;
   } catch {
     return "";

@@ -35,10 +35,7 @@ const VALID_AUDIT_JSON = JSON.stringify({
 
 describe("ReviewService", () => {
   test("parses valid review JSON", async () => {
-    const service = new ReviewService(
-      mockCopilot(VALID_REVIEW_JSON),
-      mockGitHub(),
-    );
+    const service = new ReviewService(mockCopilot(VALID_REVIEW_JSON), mockGitHub());
     const comments = await service.reviewPR({ owner: "o", repo: "r" }, 1, {
       event: "COMMENT",
     });
@@ -48,9 +45,7 @@ describe("ReviewService", () => {
 
   test("throws ValidationError on invalid JSON", async () => {
     const service = new ReviewService(mockCopilot("not json"), mockGitHub());
-    expect(
-      service.reviewPR({ owner: "o", repo: "r" }, 1, { event: "COMMENT" }),
-    ).rejects.toThrow();
+    expect(service.reviewPR({ owner: "o", repo: "r" }, 1, { event: "COMMENT" })).rejects.toThrow();
   });
 
   test("throws ValidationError on wrong schema", async () => {
@@ -58,9 +53,7 @@ describe("ReviewService", () => {
       mockCopilot(JSON.stringify([{ wrong: "shape" }])),
       mockGitHub(),
     );
-    expect(
-      service.reviewPR({ owner: "o", repo: "r" }, 1, { event: "COMMENT" }),
-    ).rejects.toThrow();
+    expect(service.reviewPR({ owner: "o", repo: "r" }, 1, { event: "COMMENT" })).rejects.toThrow();
   });
 
   test("strips markdown fences before parsing", async () => {
@@ -75,10 +68,7 @@ describe("ReviewService", () => {
 
 describe("AuditService", () => {
   test("parses valid audit JSON", async () => {
-    const service = new AuditService(
-      mockCopilot(VALID_AUDIT_JSON),
-      mockGitHub(),
-    );
+    const service = new AuditService(mockCopilot(VALID_AUDIT_JSON), mockGitHub());
     const report = await service.audit({ owner: "o", repo: "r" }, 1, {
       scope: "all",
       failOn: "high",

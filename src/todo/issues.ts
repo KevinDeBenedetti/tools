@@ -6,12 +6,7 @@ import { createIssue, fetchAllIssues, getIssue, updateIssue } from "./github";
 import { readTodo, writeTodo } from "./files";
 import { createPRWithTodo } from "./git";
 import { ensureLabels, labelsForEntry } from "./labels";
-import {
-  addComment,
-  changesComment,
-  closedComment,
-  createdComment,
-} from "./comments";
+import { addComment, changesComment, closedComment, createdComment } from "./comments";
 import { formatPullPRBody, formatPushPRBody } from "./formatters";
 import type { GhIssue, IssueChanges, SyncLogEntry, TodoEntry } from "./types";
 
@@ -30,10 +25,7 @@ export function detectChanges(entry: TodoEntry, issue: GhIssue): IssueChanges {
 
   const expectedState = entry.status === "done" ? "closed" : "open";
   if (expectedState !== issue.state) {
-    changes.state = [
-      issue.state as "open" | "closed",
-      expectedState as "open" | "closed",
-    ];
+    changes.state = [issue.state as "open" | "closed", expectedState as "open" | "closed"];
   }
 
   const expectedLabels = new Set(labelsForEntry(entry));
@@ -43,10 +35,7 @@ export function detectChanges(entry: TodoEntry, issue: GhIssue): IssueChanges {
     expectedLabels.size !== issueLabels.size ||
     ![...expectedLabels].every((l) => issueLabels.has(l))
   ) {
-    changes.type = [
-      issue.labels.map((l) => l.name).join(", "),
-      [...expectedLabels].join(", "),
-    ];
+    changes.type = [issue.labels.map((l) => l.name).join(", "), [...expectedLabels].join(", ")];
   }
 
   const expectedAssignees = new Set(entry.assignees);
@@ -92,9 +81,7 @@ export function resolveIssue(
     return { action: "recovered", issue: byTitleMatch };
   }
 
-  console.warn(
-    `⚠️  github_id=#${entry.github_id} not found and no title match — will recreate.`,
-  );
+  console.warn(`⚠️  github_id=#${entry.github_id} not found and no title match — will recreate.`);
   return { action: "recreate", issue: null };
 }
 
@@ -113,12 +100,7 @@ export async function push(): Promise<void> {
 
     if (!issue) {
       const labels = labelsForEntry(entry);
-      const number = await createIssue(
-        entry.title,
-        entry.body ?? "",
-        labels,
-        entry.assignees,
-      );
+      const number = await createIssue(entry.title, entry.body ?? "", labels, entry.assignees);
       entry.github_id = number;
       await addComment(number, createdComment(entry));
       log.push({ action: "created", issueNumber: number, title: entry.title });

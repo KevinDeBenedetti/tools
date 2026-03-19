@@ -40,12 +40,7 @@ export interface IGitHubClient {
     comments: IReviewComment[];
     event: "COMMENT" | "APPROVE" | "REQUEST_CHANGES";
   }): Promise<void>;
-  getFileContent(
-    owner: string,
-    repo: string,
-    path: string,
-    ref?: string,
-  ): Promise<string>;
+  getFileContent(owner: string, repo: string, path: string, ref?: string): Promise<string>;
 }
 
 export interface ILogger {

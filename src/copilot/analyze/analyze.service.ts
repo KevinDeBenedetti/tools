@@ -3,12 +3,9 @@ import type { AnalyzeInput } from "./analyze.schema";
 
 const TARGET_DESCRIPTIONS: Record<string, string> = {
   all: "Perform a comprehensive analysis covering security, performance, and quality.",
-  performance:
-    "Identify algorithmic inefficiencies, N+1 queries, and memory footprint issues.",
-  quality:
-    "Evaluate code readability, test coverage gaps, and adherence to best practices.",
-  security:
-    "Identify OWASP Top-10 vulnerabilities, secret leaks, and insecure patterns.",
+  performance: "Identify algorithmic inefficiencies, N+1 queries, and memory footprint issues.",
+  quality: "Evaluate code readability, test coverage gaps, and adherence to best practices.",
+  security: "Identify OWASP Top-10 vulnerabilities, secret leaks, and insecure patterns.",
 };
 
 const SYSTEM_PROMPT = `
@@ -34,12 +31,8 @@ export class AnalyzeService {
     const diff = await this.github.getPRDiff(repo.owner, repo.repo, prNumber);
 
     const focus =
-      TARGET_DESCRIPTIONS[opts.target] ??
-      TARGET_DESCRIPTIONS["all"] ??
-      "Analyze thoroughly.";
-    const extra = opts.instructions
-      ? `\n\nAdditional instructions: ${opts.instructions}`
-      : "";
+      TARGET_DESCRIPTIONS[opts.target] ?? TARGET_DESCRIPTIONS["all"] ?? "Analyze thoroughly.";
+    const extra = opts.instructions ? `\n\nAdditional instructions: ${opts.instructions}` : "";
     const ctx = opts.context ? `\n\nProject context: ${opts.context}` : "";
     const systemPrompt = `${SYSTEM_PROMPT}\n\nFocus: ${focus}${extra}${ctx}`;
 

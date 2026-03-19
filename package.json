@@ -1,8 +1,9 @@
 {
-  "name": "@tools",
-  "version": "1.0.0",
+  "name": "@tools-src/tools",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "clean": "rm -rf dist node_modules bun.lock",
     "build": "bun build ./src/index.ts --outdir ./dist --target node --minify",
     "dev": "bun run ./src/index.ts",
     "test": "bun test --coverage",

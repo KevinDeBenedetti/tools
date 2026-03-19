@@ -19,10 +19,7 @@ export function closedComment(): string {
   return "✅ Closed by TODO.yml (status: done)";
 }
 
-export function changesComment(
-  entry: TodoEntry,
-  changes: IssueChanges,
-): string {
+export function changesComment(entry: TodoEntry, changes: IssueChanges): string {
   const lines: string[] = ["**Synced from TODO.yml:**"];
 
   if (changes.title) {
@@ -32,17 +29,13 @@ export function changesComment(
     lines.push(`- **Status:** ${changes.status[0]} → ${changes.status[1]}`);
   }
   if (changes.priority) {
-    lines.push(
-      `- **Priority:** ${changes.priority[0]} → ${changes.priority[1]}`,
-    );
+    lines.push(`- **Priority:** ${changes.priority[0]} → ${changes.priority[1]}`);
   }
   if (changes.type) {
     lines.push(`- **Type:** ${changes.type[0]} → ${changes.type[1]}`);
   }
   if (changes.assignees) {
-    lines.push(
-      `- **Assignees:** ${changes.assignees[0]} → ${changes.assignees[1]}`,
-    );
+    lines.push(`- **Assignees:** ${changes.assignees[0]} → ${changes.assignees[1]}`);
   }
   if (changes.body) {
     lines.push(`- **Description:** Updated`);
