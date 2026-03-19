@@ -1,0 +1,54 @@
+name: Copilot Tools
+description: Run Copilot-backed review, analyze, generate, or audit tools
+
+inputs:
+  tool:
+    required: true
+    description: 'review | analyze | generate | audit'
+  token:
+    required: true
+    description: GitHub token with Copilot access
+  options:
+    required: false
+    description: JSON string of tool-specific options
+    default: '{}'
+  model:
+    required: false
+    description: Model ID passed to the Copilot client
+    default: ''
+
+outputs:
+  summary:
+    description: Tool execution summary
+    value: ${{ steps.run.outputs.summary }}
+  success:
+    description: 'true | false'
+    value: ${{ steps.run.outputs.success }}
+
+runs:
+  using: composite
+  steps:
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        ROOT_DIR="$(cd "${{ github.action_path }}/../../.." && pwd)"
+        cd "$ROOT_DIR"
+        bun install --frozen-lockfile
+
+    - name: Run Copilot tool
+      id: run
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        INPUT_TOOL: ${{ inputs.tool }}
+        INPUT_TOKEN: ${{ inputs.token }}
+        INPUT_OPTIONS: ${{ inputs.options }}
+        INPUT_MODEL: ${{ inputs.model }}
+      run: |
+        ROOT_DIR="$(cd "${{ github.action_path }}/../../.." && pwd)"
+        cd "$ROOT_DIR"
+        bun run src/index.ts
