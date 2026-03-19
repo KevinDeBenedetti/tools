@@ -1,5 +1,5 @@
 name: GitHub Tools
-description: 'Run GitHub utility tools (detect-bots, purge-actions, purge-packages, purge-release, purge-tags, scan-secrets)'
+description: Run GitHub utility tools for repository maintenance and hygiene
 
 inputs:
   tool:
@@ -7,23 +7,24 @@ inputs:
     description: 'detect-bots | purge-actions | purge-packages | purge-release | purge-tags | scan-secrets'
   repo:
     required: false
-    description: 'GitHub repository in owner/repo format (defaults to current repo)'
+    description: GitHub repository in owner/repo format
+    default: ''
   options:
     required: false
-    description: 'Extra CLI flags passed to the tool (e.g. "--dry-run --older-than 30d")'
+    description: Extra CLI flags passed to the tool (for example "--dry-run --older-than 30d")
     default: ''
   dry-run:
     required: false
-    description: 'Preview actions without making changes'
+    description: Preview actions without making changes
     default: 'false'
 
 outputs:
   result:
-    description: 'JSON output from the tool'
+    description: Command output emitted by the tool
     value: ${{ steps.run.outputs.result }}
 
 runs:
-  using: 'composite'
+  using: composite
   steps:
     - uses: oven-sh/setup-bun@v2
       with:
@@ -31,23 +32,36 @@ runs:
 
     - name: Install dependencies
       shell: bash
-      run: bun install --frozen-lockfile
-      working-directory: ${{ github.action_path }}
+      run: |
+        ROOT_DIR="$(cd "${{ github.action_path }}/../../.." && pwd)"
+        cd "$ROOT_DIR"
+        bun install --frozen-lockfile
 
     - name: Run GitHub tool
       id: run
       shell: bash
-      working-directory: ${{ github.action_path }}
       env:
         GITHUB_TOKEN: ${{ github.token }}
         GH_TOKEN: ${{ github.token }}
       run: |
+        set -o pipefail
+        ROOT_DIR="$(cd "${{ github.action_path }}/../../.." && pwd)"
+        cd "$ROOT_DIR"
+
         REPO="${{ inputs.repo || github.repository }}"
         DRY_RUN_FLAG=""
         if [ "${{ inputs.dry-run }}" = "true" ]; then
           DRY_RUN_FLAG="--dry-run"
         fi
+
+        OUTPUT_FILE="$(mktemp)"
         bun run src/github/cli.ts ${{ inputs.tool }} \
           --repo "$REPO" \
           $DRY_RUN_FLAG \
-          ${{ inputs.options }}
+          ${{ inputs.options }} | tee "$OUTPUT_FILE"
+
+        {
+          echo "result<<EOF"
+          cat "$OUTPUT_FILE"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
