@@ -28,7 +28,10 @@ export class GenerateService {
     prTitle?: string,
   ): Promise<string> {
     // Special handling for template type
-    if (opts.type === "template" && prNumber && prTitle) {
+    if (opts.type === "template") {
+      if (!prNumber || !prTitle) {
+        return "⚠️ Template auto-fill requires a pull request context (`prNumber` and `prTitle`). Ensure this workflow runs on a `pull_request` event.";
+      }
       const templateService = new TemplateService(this.copilot, this.github);
       const fields = await templateService.generateTemplateFields(repo, prNumber, prTitle);
       return templateService.formatAsMarkdown(fields);

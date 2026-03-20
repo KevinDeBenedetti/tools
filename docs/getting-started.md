@@ -147,3 +147,5 @@ All tests use mocked `gh` and `jq` binaries — no real GitHub calls are made.
 - [Copilot Instructions](./copilot/instructions.md) — writing Copilot instructions
 - **[Copilot Chat & Sessions](./copilot/chat-and-sessions.md)** — interactive chat, persistent sessions, session resumption
 - **[Copilot PR Summary Workflow](./copilot/pr-summary-workflow.md)** — automated PR summaries in GitHub Actions
+- **[Copilot PR Template Auto-fill](./copilot/pr-template-autofill.md)** — auto-fill PR descriptions with Copilot
+- **[Reusable Workflows](./copilot/reusable-workflows.md)** — call the Copilot workflows from any repository

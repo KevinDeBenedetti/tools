@@ -6,7 +6,16 @@ export interface TemplateFieldsOutput {
   testingApproach: string;
   impactAreas: string[];
   breakingChanges: string[];
+  /** Set when a PR template was found and filled by Copilot. */
+  filledTemplate?: string;
 }
+
+/** Paths to look for a PR template, in priority order. */
+const TEMPLATE_PATHS = [
+  ".github/PULL_REQUEST_TEMPLATE.md",
+  "PULL_REQUEST_TEMPLATE.md",
+  "docs/PULL_REQUEST_TEMPLATE.md",
+];
 
 /**
  * Generates structured PR template fields by analyzing PR diff and commits.
@@ -23,25 +32,69 @@ export class TemplateService {
     prNumber: number,
     prTitle: string,
   ): Promise<TemplateFieldsOutput> {
-    const diff = await this.github.getPRDiff(repo.owner, repo.repo, prNumber);
+    const [diff, prTemplate] = await Promise.all([
+      this.github.getPRDiff(repo.owner, repo.repo, prNumber),
+      this.fetchPRTemplate(repo),
+    ]);
 
-    // Build context for analysis
-    const context = `PR Title: ${prTitle}
+    const context = `PR Title: ${prTitle}\n\nChanges:\n${diff}`;
 
-Changes:
-${diff}`;
+    if (prTemplate) {
+      try {
+        const filledTemplate = await this.fillTemplate(prTemplate, context);
+        // formatAsMarkdown uses filledTemplate exclusively — no Copilot call needed for base fields
+        return { ...this.getFallbackFields(prTitle), filledTemplate };
+      } catch {
+        // Fall through to structured analysis
+      }
+    }
 
-    // Generate structured analysis from Copilot
-    const analysisPrompt = `Analyze this PR and extract structured information.
+    return this.generateStructuredFields(context, prTitle);
+  }
 
-Return a JSON object with exactly these fields (no markdown, valid JSON only):
-{
-  "description": "1-2 sentence summary of changes for PR description",
-  "changeType": "one of: bug, feature, refactor, docs, perf, breaking",
-  "testingApproach": "Suggested testing approach for these changes",
-  "impactAreas": ["affected_area_1", "affected_area_2"],
-  "breakingChanges": ["breaking_change_1" or empty array]
-}`;
+  /** Tries known template paths in priority order, returns content or null. */
+  private async fetchPRTemplate(repo: { owner: string; repo: string }): Promise<string | null> {
+    for (const path of TEMPLATE_PATHS) {
+      try {
+        return await this.github.getFileContent(repo.owner, repo.repo, path);
+      } catch {
+        // Try next path
+      }
+    }
+    return null;
+  }
+
+  /** Asks Copilot to fill in the PR template based on the PR context. */
+  private async fillTemplate(template: string, context: string): Promise<string> {
+    const systemPrompt =
+      "You are an expert code reviewer filling in a pull request template. " +
+      "Fill in the template using only information from the provided PR diff. " +
+      "Preserve the template structure exactly — headings, checkboxes, and all sections. " +
+      "For checkboxes: use [x] to check relevant items, [ ] for the rest. " +
+      "Return ONLY the filled template, with no extra text or commentary outside it.";
+
+    const userPrompt =
+      `Fill in this PR template based on the changes below.\n\n` +
+      `## Template\n${template}\n\n## PR Information\n${context}`;
+
+    return this.copilot.complete(systemPrompt, userPrompt);
+  }
+
+  /** Generates structured fields via JSON analysis — used as fallback when no template exists. */
+  private async generateStructuredFields(
+    context: string,
+    prTitle: string,
+  ): Promise<Omit<TemplateFieldsOutput, "filledTemplate">> {
+    const analysisPrompt =
+      `Analyze this PR and extract structured information.\n\n` +
+      `Return a JSON object with exactly these fields (no markdown, valid JSON only):\n` +
+      `{\n` +
+      `  "description": "1-2 sentence summary of what changed and why",\n` +
+      `  "changeType": "one of: bug, feature, refactor, docs, perf, breaking",\n` +
+      `  "testingApproach": "Concrete testing steps for these specific changes",\n` +
+      `  "impactAreas": ["affected_area_1", "affected_area_2"],\n` +
+      `  "breakingChanges": ["breaking_change_1"] or []\n` +
+      `}`;
 
     const systemPrompt =
       "You are an expert code reviewer. Analyze the PR and return ONLY valid JSON, no other text.";
@@ -49,41 +102,32 @@ Return a JSON object with exactly these fields (no markdown, valid JSON only):
     try {
       const response = await this.copilot.complete(systemPrompt, `${analysisPrompt}\n\n${context}`);
 
-      // Parse and validate JSON response
       const parsed = this.parseJsonResponse(response);
 
       return {
-        description:
-          (this.getProperty(parsed, "description") as string | undefined) || "PR description",
-        changeType: this.normalizeChangeType(this.getProperty(parsed, "changeType")),
+        description: (parsed["description"] as string | undefined) || "PR description",
+        changeType: this.normalizeChangeType(parsed["changeType"]),
         testingApproach:
-          (this.getProperty(parsed, "testingApproach") as string | undefined) ||
+          (parsed["testingApproach"] as string | undefined) ||
           "Add unit tests to verify the changes and prevent regressions.",
-        impactAreas: Array.isArray(this.getProperty(parsed, "impactAreas"))
-          ? (this.getProperty(parsed, "impactAreas") as string[])
+        impactAreas: Array.isArray(parsed["impactAreas"])
+          ? (parsed["impactAreas"] as string[])
           : [],
-        breakingChanges: Array.isArray(this.getProperty(parsed, "breakingChanges"))
-          ? (this.getProperty(parsed, "breakingChanges") as string[])
+        breakingChanges: Array.isArray(parsed["breakingChanges"])
+          ? (parsed["breakingChanges"] as string[])
           : [],
       };
-    } catch (error) {
-      // Fallback if Copilot analysis fails
+    } catch {
       return this.getFallbackFields(prTitle);
     }
   }
 
   private parseJsonResponse(response: string): Record<string, unknown> {
-    // Try to extract JSON from response (might have markdown or extra text)
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error("No JSON found in response");
     }
-
     return JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-  }
-
-  private getProperty(obj: Record<string, unknown>, key: string): unknown {
-    return obj[key];
   }
 
   private normalizeChangeType(
@@ -103,15 +147,14 @@ Return a JSON object with exactly these fields (no markdown, valid JSON only):
   }
 
   private getFallbackFields(title: string): TemplateFieldsOutput {
-    // Simple heuristic-based fallback if Copilot fails
     const titleLower = title.toLowerCase();
     let changeType: TemplateFieldsOutput["changeType"] = "feature";
 
     if (titleLower.includes("fix")) changeType = "bug";
-    if (titleLower.includes("refactor")) changeType = "refactor";
-    if (titleLower.includes("docs")) changeType = "docs";
-    if (titleLower.includes("perf")) changeType = "perf";
-    if (titleLower.includes("breaking")) changeType = "breaking";
+    else if (titleLower.includes("refactor")) changeType = "refactor";
+    else if (titleLower.includes("docs")) changeType = "docs";
+    else if (titleLower.includes("perf")) changeType = "perf";
+    else if (titleLower.includes("breaking")) changeType = "breaking";
 
     return {
       description: `This PR: ${title}`,
@@ -124,31 +167,58 @@ Return a JSON object with exactly these fields (no markdown, valid JSON only):
 
   /**
    * Formats template fields as a markdown comment for PR.
-   * Useful for posting suggestions as a PR comment.
+   * When `filledTemplate` is present (PR template found), renders the pre-filled template.
+   * Otherwise falls back to a structured suggestions block.
    */
   formatAsMarkdown(fields: TemplateFieldsOutput): string {
-    const breakingSection =
-      fields.breakingChanges.length > 0
-        ? `\n**⚠️ Breaking Changes:**\n${fields.breakingChanges.map((bc) => `- ${bc}`).join("\n")}`
-        : "";
+    if (fields.filledTemplate) {
+      return [
+        "## 🤖 Copilot PR Auto-fill",
+        "",
+        "Based on your changes, here is a pre-filled PR description.",
+        "Copy the content below into your PR description:",
+        "",
+        "---",
+        "",
+        fields.filledTemplate.trim(),
+        "",
+        "---",
+        "",
+        "*Generated by [Copilot Tools] &nbsp;·&nbsp; Copy the content above into your PR description.*",
+      ].join("\n");
+    }
 
-    const impactSection =
-      fields.impactAreas.length > 0
-        ? `\n**Potential Impact Areas:**\n${fields.impactAreas.map((area) => `- ${area}`).join("\n")}`
-        : "";
+    const changeTypeLabel = `${this.changeTypeEmoji(fields.changeType)} \`${fields.changeType}\``;
 
-    return `## 🤖 Copilot PR Template Suggestions
+    const lines: string[] = [
+      "## 🤖 Copilot PR Auto-fill",
+      "",
+      "> No PR template was found. Use the suggested values below to fill in your PR description.",
+      "",
+      "**Description**",
+      fields.description,
+      "",
+      `**Change Type:** ${changeTypeLabel}`,
+      "",
+      "**Testing Approach**",
+      fields.testingApproach,
+    ];
 
-**Description:**
-${fields.description}
+    if (fields.impactAreas.length > 0) {
+      lines.push("", "**📌 Potential Impact Areas**", ...fields.impactAreas.map((a) => `- ${a}`));
+    }
 
-**Change Type:** ${this.changeTypeEmoji(fields.changeType)} ${fields.changeType}
+    if (fields.breakingChanges.length > 0) {
+      lines.push("", "**⚠️ Breaking Changes**", ...fields.breakingChanges.map((bc) => `- ${bc}`));
+    }
 
-**Testing Approach:**
-${fields.testingApproach}${impactSection}${breakingSection}
+    lines.push(
+      "",
+      "---",
+      "*Generated by [Copilot Tools] &nbsp;·&nbsp; Copy the values above into your PR description.*",
+    );
 
----
-*Copy the above information into your PR description to complete the template.*`;
+    return lines.join("\n");
   }
 
   private changeTypeEmoji(changeType: TemplateFieldsOutput["changeType"]): string {

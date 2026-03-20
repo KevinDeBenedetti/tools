@@ -88,11 +88,19 @@ Open a new PR against `main` (or your target branch):
 
 ### Default Workflow
 
-The default workflow (`copilot-pr-summary.yml`) generates a **summary** of the PR changes:
+The model is defined once as a job-level env var and reused in both the action call and the footer, avoiding duplication:
 
 ```yaml
-options: '{"type":"summary","format":"markdown"}'
-model: gpt-5-mini
+jobs:
+  summary:
+    env:
+      MODEL: gpt-5-mini   # change here to update everywhere
+
+    steps:
+      - uses: ./.github/actions/copilot
+        with:
+          model: ${{ env.MODEL }}
+          options: '{"type":"summary","format":"markdown"}'
 ```
 
 ### Customize the Summary Type
@@ -335,6 +343,8 @@ Then trigger manually from **Actions → Copilot PR Summary → Run workflow**.
 
 ## See Also
 
+- [PR Template Auto-fill](./pr-template-autofill.md)
+- [Reusable Workflows](./reusable-workflows.md) — use this workflow in other repos
 - [Copilot Chat & Sessions Guide](./chat-and-sessions.md)
 - [Copilot SDK Documentation](https://github.com/github/copilot-sdk)
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
@@ -632,6 +642,8 @@ Then trigger manually from **Actions → Copilot PR Summary → Run workflow**.
 
 ## See Also
 
+- [PR Template Auto-fill](./pr-template-autofill.md)
+- [Reusable Workflows](./reusable-workflows.md) — use this workflow in other repos
 - [Copilot Chat & Sessions Guide](./chat-and-sessions.md)
 - [Copilot SDK Documentation](https://github.com/github/copilot-sdk)
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
