@@ -40,7 +40,7 @@ jobs:
       - name: Generate PR summary
         id: copilot
         # Reference the action from the tools repo so it works when called externally
-        uses: YOUR_ORG/tools/.github/actions/copilot@main
+        uses: KevinDeBenedetti/tools/.github/actions/copilot@main
         with:
           tool: generate
           token: ${{ secrets.COPILOT_TOKEN }}
