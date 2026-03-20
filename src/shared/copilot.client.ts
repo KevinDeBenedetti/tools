@@ -1,6 +1,7 @@
 import { CopilotClient as SDKClient, approveAll } from "@github/copilot-sdk";
 import type { ICopilotClient } from "./types/copilot";
 import { CopilotError } from "./errors";
+import { DEFAULT_MODEL } from "./constants";
 
 export { defineTool } from "@github/copilot-sdk";
 
@@ -15,7 +16,7 @@ export class CopilotClient implements ICopilotClient {
   private readonly sdk: SDKClient;
   private readonly model: string;
 
-  constructor(token: string, model = "gpt-4.1") {
+  constructor(token: string, model = DEFAULT_MODEL) {
     this.sdk = new SDKClient({
       githubToken: token,
       useLoggedInUser: false,

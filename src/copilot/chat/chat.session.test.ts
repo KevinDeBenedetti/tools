@@ -1,6 +1,7 @@
 import { describe, expect, test, mock } from "bun:test";
 import { CopilotChatSession } from "./chat.session";
 import { CopilotError } from "../../shared/errors";
+import { DEFAULT_MODEL } from "../../shared/constants";
 
 // ── Fake SDK helpers ──────────────────────────────────────────────────────────
 
@@ -45,19 +46,19 @@ describe("CopilotChatSession", () => {
   test("start() calls sdk.start() and createSession()", async () => {
     const session = makeFakeSession();
     const sdk = makeFakeSDK(session);
-    const chat = new CopilotChatSession("token", "gpt-4.1", "test-session", sdk);
+    const chat = new CopilotChatSession("token", DEFAULT_MODEL, "test-session", sdk);
 
     await chat.start();
 
     expect(sdk.start).toHaveBeenCalledTimes(1);
     expect(sdk.createSession).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gpt-4.1", sessionId: "test-session", streaming: true }),
+      expect.objectContaining({ model: DEFAULT_MODEL, sessionId: "test-session", streaming: true }),
     );
   });
 
   test("ask() streams chunks via onChunk callback", async () => {
     const sdk = makeFakeSDK(makeFakeSession(["Hello ", "world"]));
-    const chat = new CopilotChatSession("token", "gpt-4.1", "s", sdk);
+    const chat = new CopilotChatSession("token", DEFAULT_MODEL, "s", sdk);
     await chat.start();
 
     const received: string[] = [];
@@ -69,7 +70,7 @@ describe("CopilotChatSession", () => {
 
   test("ask() records conversation history", async () => {
     const sdk = makeFakeSDK(makeFakeSession(["Reply"]));
-    const chat = new CopilotChatSession("token", "gpt-4.1", "s", sdk);
+    const chat = new CopilotChatSession("token", DEFAULT_MODEL, "s", sdk);
     await chat.start();
 
     await chat.ask("Question?", () => {});
@@ -83,7 +84,7 @@ describe("CopilotChatSession", () => {
   test("ask() sends the prompt to the SDK session", async () => {
     const session = makeFakeSession(["ok"]);
     const sdk = makeFakeSDK(session);
-    const chat = new CopilotChatSession("token", "gpt-4.1", "s", sdk);
+    const chat = new CopilotChatSession("token", DEFAULT_MODEL, "s", sdk);
     await chat.start();
 
     await chat.ask("What is 2+2?", () => {});
@@ -107,14 +108,14 @@ describe("CopilotChatSession", () => {
       }),
     };
     const sdk = makeFakeSDK(session);
-    const chat = new CopilotChatSession("token", "gpt-4.1", "s", sdk);
+    const chat = new CopilotChatSession("token", DEFAULT_MODEL, "s", sdk);
     await chat.start();
 
     await expect(chat.ask("Hi", () => {})).rejects.toBeInstanceOf(CopilotError);
   });
 
   test("ask() throws CopilotError when called before start()", async () => {
-    const chat = new CopilotChatSession("token", "gpt-4.1", "s", makeFakeSDK());
+    const chat = new CopilotChatSession("token", DEFAULT_MODEL, "s", makeFakeSDK());
 
     await expect(chat.ask("Hi", () => {})).rejects.toBeInstanceOf(CopilotError);
   });
@@ -122,7 +123,7 @@ describe("CopilotChatSession", () => {
   test("summary() sends a summarize prompt", async () => {
     const session = makeFakeSession(["• Topic 1\n• Topic 2"]);
     const sdk = makeFakeSDK(session);
-    const chat = new CopilotChatSession("token", "gpt-4.1", "s", sdk);
+    const chat = new CopilotChatSession("token", DEFAULT_MODEL, "s", sdk);
     await chat.start();
 
     const result = await chat.summary(() => {});
@@ -136,7 +137,7 @@ describe("CopilotChatSession", () => {
   test("stop() disconnects session and stops sdk", async () => {
     const session = makeFakeSession();
     const sdk = makeFakeSDK(session);
-    const chat = new CopilotChatSession("token", "gpt-4.1", "s", sdk);
+    const chat = new CopilotChatSession("token", DEFAULT_MODEL, "s", sdk);
     await chat.start();
     await chat.stop();
 
@@ -170,7 +171,7 @@ describe("CopilotChatSession", () => {
       createSession: mock(async () => persistentSession),
     };
 
-    const chat = new CopilotChatSession("token", "gpt-4.1", "s", persistentSDK);
+    const chat = new CopilotChatSession("token", DEFAULT_MODEL, "s", persistentSDK);
     await chat.start();
 
     await chat.ask("Q1", () => {});

@@ -8,12 +8,13 @@
  *
  * Optional flags:
  *   --type summary|docs|changelog|tests   (default: summary)
- *   --model <name>                        (default: gpt-4.1)
+ *   --model <name>                        (default: gpt-5-mini)
  */
 
 import { CopilotClient } from "../../shared/copilot.client";
 import { GitHubClient } from "../../shared/github.client";
 import { GenerateService } from "./generate.service";
+import { DEFAULT_MODEL } from "../../shared/constants";
 
 function arg(flag: string): string | undefined {
   const idx = process.argv.indexOf(flag);
@@ -39,7 +40,7 @@ const owner = required("--owner");
 const repo = required("--repo");
 const prNumber = Number(required("--pr"));
 const type = (arg("--type") ?? "summary") as "summary" | "docs" | "changelog" | "tests";
-const model = arg("--model") ?? "gpt-4.1";
+const model = arg("--model") ?? DEFAULT_MODEL;
 
 if (isNaN(prNumber) || prNumber <= 0) {
   console.error("--pr must be a positive integer");
