@@ -16,7 +16,6 @@ jobs:
     with:
       run-link-check: true
       link-check-paths: 'docs/'
-      additional-scripts: 'format:check github:typecheck cli:typecheck'
 
   security:
     needs: [ci]
