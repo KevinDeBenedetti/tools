@@ -95,6 +95,40 @@ export class CopilotClient implements ICopilotClient {
     }
   }
 
+  /**
+   * Resumes a previously persisted session by ID (create-or-resume pattern).
+   * Falls back to a fresh named session if the session cannot be found.
+   */
+  async resumeAndComplete(
+    sessionId: string,
+    systemPrompt: string,
+    userPrompt: string,
+  ): Promise<string> {
+    const combined = systemPrompt ? `${systemPrompt}\n\n---\n\n${userPrompt}` : userPrompt;
+
+    await this.sdk.start();
+    let session;
+    try {
+      session = await this.sdk.resumeSession(sessionId, { onPermissionRequest: approveAll });
+    } catch {
+      session = await this.sdk.createSession({
+        model: this.model,
+        onPermissionRequest: approveAll,
+        sessionId,
+      });
+    }
+
+    try {
+      const response = await session.sendAndWait({ prompt: combined });
+      return response?.data.content ?? "";
+    } catch (error) {
+      throw new CopilotError(`Copilot resume session call failed: ${String(error)}`, error);
+    } finally {
+      await session.disconnect();
+      await this.sdk.stop();
+    }
+  }
+
   async stop(): Promise<void> {
     await this.sdk.stop();
   }

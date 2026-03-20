@@ -1,10 +1,10 @@
 name: Copilot Tools
-description: Run Copilot-backed review, analyze, generate, or audit tools
+description: Run Copilot-backed review, analyze, generate, audit, or resume tools
 
 inputs:
   tool:
     required: true
-    description: 'review | analyze | generate | audit'
+    description: 'review | analyze | generate | audit | resume'
   token:
     required: true
     description: GitHub token with Copilot access
@@ -24,6 +24,15 @@ outputs:
   success:
     description: 'true | false'
     value: ${{ steps.run.outputs.success }}
+  generated:
+    description: Generated content (generate tool — type summary/docs/changelog/tests)
+    value: ${{ steps.run.outputs.generated }}
+  response:
+    description: Copilot response text (resume tool)
+    value: ${{ steps.run.outputs.response }}
+  sessionId:
+    description: Session ID used or created (resume tool)
+    value: ${{ steps.run.outputs.sessionId }}
 
 runs:
   using: composite
@@ -43,6 +52,9 @@ runs:
       id: run
       shell: bash
       env:
+        # SDK token priority: COPILOT_GITHUB_TOKEN > GH_TOKEN > GITHUB_TOKEN
+        # Must be a token from an account with an active Copilot subscription.
+        COPILOT_GITHUB_TOKEN: ${{ inputs.token }}
         GITHUB_TOKEN: ${{ inputs.token }}
         INPUT_TOOL: ${{ inputs.tool }}
         INPUT_TOKEN: ${{ inputs.token }}

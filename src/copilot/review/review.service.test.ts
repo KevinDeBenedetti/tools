@@ -10,6 +10,10 @@ class FakeCopilotClient implements ICopilotClient {
     return this.response;
   }
 
+  async resumeAndComplete(): Promise<string> {
+    return this.response;
+  }
+
   async *stream(): AsyncGenerator<string> {
     yield this.response;
   }

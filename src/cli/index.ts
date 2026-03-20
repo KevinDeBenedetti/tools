@@ -1,12 +1,14 @@
 import * as p from "@clack/prompts";
 import color from "picocolors";
 import { runGithubCli } from "../github/cli";
+import { runCopilotChat } from "../copilot/chat/index";
 
 // ── Tool categories ────────────────────────────────────────────────────────────
 
-type Category = "github" | "copilot" | "todo";
+type Category = "github" | "copilot" | "chat" | "todo";
 
 const categoryDescriptions: Record<Category, string> = {
+  chat: "Interactive Copilot chat in the terminal — ask, prompt, summarize",
   copilot: "Copilot-powered code review, analysis, generation, and audit",
   github: "GitHub automation tools (purge runs/releases/tags, detect bots, scan secrets)",
   todo: "Bidirectional sync between TODO.yml and GitHub Issues",
@@ -164,8 +166,13 @@ async function runMainMenu(): Promise<void> {
       },
       {
         hint: categoryDescriptions.copilot,
-        label: "Copilot Tools",
+        label: "Copilot Tools (CI/CD)",
         value: "copilot",
+      },
+      {
+        hint: categoryDescriptions.chat,
+        label: "💬 Copilot Chat",
+        value: "chat",
       },
       { hint: categoryDescriptions.todo, label: "Todo Sync", value: "todo" },
     ],
@@ -185,6 +192,16 @@ async function runMainMenu(): Promise<void> {
     case "copilot": {
       await runCopilotMenu();
       p.outro("Done.");
+      break;
+    }
+    case "chat": {
+      const token = process.env["GITHUB_TOKEN"] ?? "";
+      if (!token) {
+        p.log.error("Set GITHUB_TOKEN first:  export GITHUB_TOKEN=$(gh auth token)");
+        p.outro("Cancelled.");
+        break;
+      }
+      await runCopilotChat(token);
       break;
     }
     case "todo": {

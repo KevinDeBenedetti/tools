@@ -1,19 +1,27 @@
 import { describe, expect, test, mock } from "bun:test";
 import { ReviewService } from "../copilot/review/review.service";
 import { AuditService } from "../copilot/audit/audit.service";
+import { ResumeService } from "../copilot/resume/resume.service";
 import type { ICopilotClient, IGitHubClient } from "../shared/types/copilot";
+
+async function* fakeStream(response: string): AsyncGenerator<string> {
+  yield response;
+}
 
 function mockCopilot(response: string): ICopilotClient {
   return {
     complete: mock(async () => response),
+    resumeAndComplete: mock(async () => response),
+    stream: mock(() => fakeStream(response)),
   };
 }
 
 function mockGitHub(diff = "diff --git a/file.ts b/file.ts"): IGitHubClient {
   return {
-    getPRDiff: mock(async () => diff),
-    getFileContent: mock(async () => "// file content"),
     createReview: mock(async () => {}),
+    getFileContent: mock(async () => "// file content"),
+    getPRDiff: mock(async () => diff),
+    getPRFiles: mock(async () => []),
   };
 }
 
@@ -106,5 +114,69 @@ describe("AuditService", () => {
         failOn: "high",
       }),
     ).rejects.toThrow();
+  });
+});
+
+describe("ResumeService", () => {
+  test("calls resumeAndComplete with pr-{prNumber} session ID by default", async () => {
+    const copilot = mockCopilot("Looks good from last review too.");
+    const service = new ResumeService(copilot, mockGitHub());
+    const result = await service.resumePR({ owner: "o", repo: "r" }, 42, {
+      prompt: "Any new issues?",
+    });
+    expect(result).toBe("Looks good from last review too.");
+    expect(copilot.resumeAndComplete).toHaveBeenCalledWith(
+      "pr-42",
+      expect.any(String),
+      "Any new issues?",
+    );
+  });
+
+  test("uses explicit sessionId when provided", async () => {
+    const copilot = mockCopilot("Session response.");
+    const service = new ResumeService(copilot, mockGitHub());
+    await service.resumePR({ owner: "o", repo: "r" }, 1, {
+      prompt: "Follow up.",
+      sessionId: "my-custom-session",
+    });
+    expect(copilot.resumeAndComplete).toHaveBeenCalledWith(
+      "my-custom-session",
+      expect.any(String),
+      "Follow up.",
+    );
+  });
+
+  test("falls back to 'pr-session' when prNumber is undefined", async () => {
+    const copilot = mockCopilot("No PR context.");
+    const service = new ResumeService(copilot, mockGitHub());
+    await service.resumePR({ owner: "o", repo: "r" }, undefined, {
+      prompt: "General question.",
+    });
+    expect(copilot.resumeAndComplete).toHaveBeenCalledWith(
+      "pr-session",
+      expect.any(String),
+      "General question.",
+    );
+  });
+
+  test("includes focus in system prompt when provided", async () => {
+    const copilot = mockCopilot("Focus response.");
+    const service = new ResumeService(copilot, mockGitHub());
+    await service.resumePR({ owner: "o", repo: "r" }, 5, {
+      focus: "security",
+      prompt: "Check auth.",
+    });
+    expect(copilot.resumeAndComplete).toHaveBeenCalledWith(
+      "pr-5",
+      expect.stringContaining("security"),
+      "Check auth.",
+    );
+  });
+
+  test("does not fetch diff when prNumber is undefined", async () => {
+    const github = mockGitHub();
+    const service = new ResumeService(mockCopilot("ok"), github);
+    await service.resumePR({ owner: "o", repo: "r" }, undefined, { prompt: "Hi." });
+    expect(github.getPRDiff).not.toHaveBeenCalled();
   });
 });

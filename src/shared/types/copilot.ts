@@ -13,6 +13,11 @@ export interface Annotation {
 export interface ICopilotClient {
   complete(systemPrompt: string, userPrompt: string): Promise<string>;
   stream(systemPrompt: string, userPrompt: string): AsyncGenerator<string>;
+  /**
+   * Resumes a previously persisted session by ID, or creates a new one if not found.
+   * Returns the model response as a string.
+   */
+  resumeAndComplete(sessionId: string, systemPrompt: string, userPrompt: string): Promise<string>;
 }
 
 export interface IPRFile {
