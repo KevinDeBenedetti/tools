@@ -44,7 +44,7 @@ describe("GenerateService — type routing", () => {
 
     const result = await service.generate(REPO, 1, { type: "summary", format: "markdown" });
 
-    expect(result).toBe("The summary");
+    expect(result.content).toBe("The summary");
     expect(copilot.complete).toHaveBeenCalledTimes(1);
     const [systemPrompt] = (copilot.complete as ReturnType<typeof mock>).mock.calls[0] as [
       string,
@@ -103,7 +103,7 @@ describe("GenerateService — type routing", () => {
       "feat: streaming",
     );
 
-    expect(result).toContain("## 🤖 Copilot PR Auto-fill");
+    expect(result.content).toContain("## 🤖 Copilot PR Auto-fill");
   });
 
   test("template without prTitle: returns explicit warning message", async () => {
@@ -116,8 +116,8 @@ describe("GenerateService — type routing", () => {
       undefined,
     );
 
-    expect(result).toContain("⚠️");
-    expect(result).toContain("pull request context");
+    expect(result.content).toContain("⚠️");
+    expect(result.content).toContain("pull request context");
   });
 
   test("template without prNumber: returns explicit warning message", async () => {
@@ -130,8 +130,8 @@ describe("GenerateService — type routing", () => {
       "feat: x",
     );
 
-    expect(result).toContain("⚠️");
-    expect(result).toContain("pull request context");
+    expect(result.content).toContain("⚠️");
+    expect(result.content).toContain("pull request context");
   });
 
   test("template without both prNumber and prTitle: returns explicit warning", async () => {
@@ -142,7 +142,7 @@ describe("GenerateService — type routing", () => {
       format: "markdown",
     });
 
-    expect(result).toContain("⚠️");
+    expect(result.content).toContain("⚠️");
   });
 });
 
