@@ -24,6 +24,10 @@ permissions:
   contents: read
   pull-requests: write
 
+concurrency:
+  group: copilot-summary-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   summary:
     name: Summarize PR with Copilot

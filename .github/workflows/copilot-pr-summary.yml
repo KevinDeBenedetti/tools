@@ -23,7 +23,18 @@ jobs:
       MODEL: gpt-5-mini
 
     steps:
+      - name: Check token availability
+        id: check
+        run: |
+          if [ -z "${{ secrets.COPILOT_TOKEN }}" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "⚠️ COPILOT_TOKEN is not set — skipping summary." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout
+        if: steps.check.outputs.available == 'true'
         uses: actions/checkout@v4
 
       # ── Generate PR summary via Copilot SDK ────────────────────────────────
@@ -32,6 +43,7 @@ jobs:
       # Obtain it by running: gh auth login && gh auth token
       # Classic PATs (ghp_ prefix) are NOT supported by the Copilot API.
       - name: Generate PR summary
+        if: steps.check.outputs.available == 'true'
         id: copilot
         uses: ./.github/actions/copilot
         with:

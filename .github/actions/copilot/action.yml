@@ -27,6 +27,9 @@ outputs:
   generated:
     description: Generated content (generate tool — type summary/docs/changelog/tests)
     value: ${{ steps.run.outputs.generated }}
+  filledTemplate:
+    description: Raw filled PR template content (generate tool — type template, when a template was found)
+    value: ${{ steps.run.outputs.filledTemplate }}
   response:
     description: Copilot response text (resume tool)
     value: ${{ steps.run.outputs.response }}

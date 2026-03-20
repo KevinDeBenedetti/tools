@@ -15,6 +15,12 @@ const TYPE_PROMPTS: Record<string, string> = {
 const SYSTEM_PROMPT =
   "You are an expert software engineer assisting with code generation tasks. Follow the exact instructions and return only the requested output.";
 
+export interface GenerateOutput {
+  content: string;
+  /** Raw filled PR template content, present only when type=template and a template was found. */
+  extra?: Record<string, string>;
+}
+
 export class GenerateService {
   constructor(
     private readonly copilot: ICopilotClient,
@@ -26,15 +32,21 @@ export class GenerateService {
     prNumber: number | undefined,
     opts: GenerateInput,
     prTitle?: string,
-  ): Promise<string> {
+  ): Promise<GenerateOutput> {
     // Special handling for template type
     if (opts.type === "template") {
       if (!prNumber || !prTitle) {
-        return "⚠️ Template auto-fill requires a pull request context (`prNumber` and `prTitle`). Ensure this workflow runs on a `pull_request` event.";
+        return {
+          content:
+            "⚠️ Template auto-fill requires a pull request context (`prNumber` and `prTitle`). Ensure this workflow runs on a `pull_request` event.",
+        };
       }
       const templateService = new TemplateService(this.copilot, this.github);
       const fields = await templateService.generateTemplateFields(repo, prNumber, prTitle);
-      return templateService.formatAsMarkdown(fields);
+      return {
+        content: templateService.formatAsMarkdown(fields),
+        extra: fields.filledTemplate ? { filledTemplate: fields.filledTemplate } : undefined,
+      };
     }
 
     let context = "";
@@ -52,6 +64,8 @@ export class GenerateService {
 
     const systemPrompt = `${SYSTEM_PROMPT}\n\nTask: ${typePrompt}${extra}${formatHint}`;
 
-    return this.copilot.complete(systemPrompt, context || "No code context provided.");
+    return {
+      content: await this.copilot.complete(systemPrompt, context || "No code context provided."),
+    };
   }
 }
