@@ -1,0 +1,49 @@
+name: Copilot PR Template Auto-fill
+
+on:
+  pull_request:
+    types: [opened]
+    branches: [main]
+
+# Minimal permissions: read code, write PR comments
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  autofill:
+    name: Auto-fill PR template with Copilot
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Generate PR template suggestions via Copilot SDK ──────────────────
+      # COPILOT_TOKEN must be a Classic PAT from a GitHub account that has
+      # an active Copilot Individual or Business subscription.
+      - name: Generate template suggestions
+        id: copilot
+        uses: ./.github/actions/copilot
+        with:
+          tool: generate
+          token: ${{ secrets.COPILOT_TOKEN }}
+          model: gpt-5-mini
+          options: '{"type":"template"}'
+
+      # ── Post template suggestions as PR comment ──────────────────────────
+      - name: Post template suggestions
+        if: steps.copilot.outputs.success == 'true'
+        env:
+          GENERATED: ${{ steps.copilot.outputs.generated }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} --body "$GENERATED"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Report failure ──────────────────────────────────────────────────
+      - name: Report failure
+        if: failure()
+        run: |
+          echo "❌ Failed to generate template suggestions"
+          exit 1

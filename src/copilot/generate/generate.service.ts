@@ -1,5 +1,6 @@
 import type { ICopilotClient, IGitHubClient } from "../../shared/types/copilot";
 import type { GenerateInput } from "./generate.schema";
+import { TemplateService } from "./template.service";
 
 const TYPE_PROMPTS: Record<string, string> = {
   changelog:
@@ -24,7 +25,15 @@ export class GenerateService {
     repo: { owner: string; repo: string },
     prNumber: number | undefined,
     opts: GenerateInput,
+    prTitle?: string,
   ): Promise<string> {
+    // Special handling for template type
+    if (opts.type === "template" && prNumber && prTitle) {
+      const templateService = new TemplateService(this.copilot, this.github);
+      const fields = await templateService.generateTemplateFields(repo, prNumber, prTitle);
+      return templateService.formatAsMarkdown(fields);
+    }
+
     let context = "";
 
     if (prNumber) {
