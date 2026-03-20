@@ -209,7 +209,7 @@ git push
 ✅ **Fix:**
 1. Verify `COPILOT_TOKEN` secret is set in repo settings
 2. Confirm it's added to the correct repository (not organization-level)
-3. Workflow references `${{ secrets.COPILOT_TOKEN }}`
+3. Workflow references <code v-pre>${{ secrets.COPILOT_TOKEN }}</code>
 
 ### "Copilot subscription not found"
 
@@ -513,7 +513,7 @@ git push
 ✅ **Fix:**
 1. Verify `COPILOT_TOKEN` secret is set in repo settings
 2. Confirm it's added to the correct repository (not organization-level)
-3. Workflow references `${{ secrets.COPILOT_TOKEN }}`
+3. Workflow references <code v-pre>${{ secrets.COPILOT_TOKEN }}</code>
 
 ### "Copilot subscription not found"
 

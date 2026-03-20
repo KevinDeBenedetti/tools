@@ -1,7 +1,11 @@
 #:schema https://www.schemastore.org/prek.json
 # prek — Rust-native pre-commit hook runner (https://prek.j178.dev)
 # Install hooks: bunx prek install
-# Run manually:  bunx prek run --all-files
+# Run manually:  bunx prek run --all-files | Update revs: prek auto-update
+
+minimum_prek_version = "0.3.0"
+fail_fast = false
+default_install_hook_types = ["pre-commit", "pre-push"]
 
 # ── Built-in hooks (Rust-native, zero setup) ──────────────────────────────────
 [[repos]]
@@ -67,3 +71,13 @@ args = ["test"]
 language = "system"
 pass_filenames = false
 stages = ["pre-push"]
+
+# ── Shared hooks from github-workflows ────────────────────────────────────────
+[[repos]]
+repo = "https://github.com/KevinDeBenedetti/github-workflows"
+# renovate: datasource=github-tags depName=KevinDeBenedetti/github-workflows
+rev = "v0.3.0"
+hooks = [
+  { id = "check-docs-links" },
+  { id = "check-vitepress-md" },
+]

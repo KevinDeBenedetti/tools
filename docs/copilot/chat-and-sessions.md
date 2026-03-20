@@ -240,7 +240,7 @@ class ResumeService {
 | Input | Required | Example |
 |-------|----------|---------|
 | `tool` | ✓ | `resume` |
-| `token` | ✓ | `${{ secrets.COPILOT_TOKEN }}` |
+| `token` | ✓ | <code v-pre>${{ secrets.COPILOT_TOKEN }}</code> |
 | `options` | ✗ | `{"prompt":"Any issues?","focus":"security"}` |
 | `model` | ✗ | `gpt-5-mini` (default) |
 
