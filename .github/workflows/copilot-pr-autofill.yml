@@ -38,10 +38,9 @@ jobs:
         if: steps.copilot.outputs.success == 'true'
         env:
           GENERATED: ${{ steps.copilot.outputs.generated }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr comment ${{ github.event.pull_request.number }} --body "$GENERATED"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ── Report failure ──────────────────────────────────────────────────
       - name: Report failure
