@@ -48,12 +48,12 @@
     "types": ["bun-types", "node"]
   },
   "include": [
-    "src/**/*"
+    "../src/**/*"
   ],
   "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.test.ts",
-    "**/*.spec.ts"
+    "../node_modules",
+    "../dist",
+    "../**/*.test.ts",
+    "../**/*.spec.ts"
   ]
 }
