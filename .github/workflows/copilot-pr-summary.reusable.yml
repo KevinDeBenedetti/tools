@@ -17,7 +17,7 @@ on:
           OAuth user access token (gho_ prefix) from a GitHub account with an
           active Copilot Individual or Business subscription.
           Obtain it by running: gh auth login && gh auth token
-        required: true
+        required: false
 
 # Minimal permissions: read code, write PR comments
 permissions:
@@ -33,11 +33,23 @@ jobs:
       MODEL: ${{ inputs.model }}
 
     steps:
+      - name: Check token availability
+        id: check
+        run: |
+          if [ -z "${{ secrets.COPILOT_TOKEN }}" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "⚠️ COPILOT_TOKEN is not set — skipping summary." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout calling repo
+        if: steps.check.outputs.available == 'true'
         uses: actions/checkout@v4
 
       # ── Generate PR summary via Copilot SDK ────────────────────────────────
       - name: Generate PR summary
+        if: steps.check.outputs.available == 'true'
         id: copilot
         # Reference the action from the tools repo so it works when called externally
         uses: KevinDeBenedetti/tools/.github/actions/copilot@main
