@@ -14,6 +14,8 @@
     "format": "oxfmt src",
     "format:check": "oxfmt --check src",
     "tools": "bun run ./src/cli/index.ts",
+    "chat": "bun run ./src/copilot/chat/index.ts",
+    "summary": "bun run ./src/copilot/generate/test-local.ts",
     "github": "bun run ./src/github/cli.ts",
     "github:menu": "bun run ./src/github/cli.ts --interactive",
     "github:lint": "oxlint --quiet src/github",
