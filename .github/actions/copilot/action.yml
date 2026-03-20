@@ -63,4 +63,4 @@ runs:
       run: |
         ROOT_DIR="$(cd "${{ github.action_path }}/../../.." && pwd)"
         cd "$ROOT_DIR"
-        bun run src/index.ts
+        bun ./src/index.ts

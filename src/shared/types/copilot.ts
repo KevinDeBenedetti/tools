@@ -61,6 +61,7 @@ export interface ToolContext {
   token: string;
   repo: GitHubRepo;
   prNumber?: number;
+  prTitle?: string;
   options: Record<string, unknown>;
   copilot: ICopilotClient;
   github: IGitHubClient;

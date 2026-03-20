@@ -7,7 +7,7 @@ export class GenerateTool implements ITool {
     const opts = generateInputSchema.parse(ctx.options);
     const service = new GenerateService(ctx.copilot, ctx.github);
 
-    const output = await service.generate(ctx.repo, ctx.prNumber, opts);
+    const output = await service.generate(ctx.repo, ctx.prNumber, opts, ctx.prTitle);
 
     ctx.logger.info(`Generation complete (type: ${opts.type})`);
 
