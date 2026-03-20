@@ -35,7 +35,10 @@ export async function buildContext(): Promise<ToolContext> {
   const { owner, repo } = github.context.repo;
   const pullRequest = github.context.payload.pull_request;
   const prNumber = typeof pullRequest?.number === "number" ? pullRequest.number : undefined;
-  const prTitle = typeof pullRequest?.title === "string" ? pullRequest.title : undefined;
+  const prTitle =
+    typeof (pullRequest as Record<string, unknown>)?.["title"] === "string"
+      ? ((pullRequest as Record<string, unknown>)["title"] as string)
+      : undefined;
 
   return {
     copilot: new CopilotClient(token, model),

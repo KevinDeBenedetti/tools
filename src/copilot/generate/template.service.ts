@@ -1,5 +1,4 @@
 import type { ICopilotClient, IGitHubClient } from "../../shared/types/copilot";
-import type { GenerateInput } from "./generate.schema";
 
 export interface TemplateFieldsOutput {
   description: string;
@@ -54,12 +53,18 @@ Return a JSON object with exactly these fields (no markdown, valid JSON only):
       const parsed = this.parseJsonResponse(response);
 
       return {
-        description: parsed.description || "PR description",
-        changeType: this.normalizeChangeType(parsed.changeType),
+        description:
+          (this.getProperty(parsed, "description") as string | undefined) || "PR description",
+        changeType: this.normalizeChangeType(this.getProperty(parsed, "changeType")),
         testingApproach:
-          parsed.testingApproach || "Add unit tests to verify the changes and prevent regressions.",
-        impactAreas: Array.isArray(parsed.impactAreas) ? parsed.impactAreas : [],
-        breakingChanges: Array.isArray(parsed.breakingChanges) ? parsed.breakingChanges : [],
+          (this.getProperty(parsed, "testingApproach") as string | undefined) ||
+          "Add unit tests to verify the changes and prevent regressions.",
+        impactAreas: Array.isArray(this.getProperty(parsed, "impactAreas"))
+          ? (this.getProperty(parsed, "impactAreas") as string[])
+          : [],
+        breakingChanges: Array.isArray(this.getProperty(parsed, "breakingChanges"))
+          ? (this.getProperty(parsed, "breakingChanges") as string[])
+          : [],
       };
     } catch (error) {
       // Fallback if Copilot analysis fails
@@ -75,6 +80,10 @@ Return a JSON object with exactly these fields (no markdown, valid JSON only):
     }
 
     return JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+  }
+
+  private getProperty(obj: Record<string, unknown>, key: string): unknown {
+    return obj[key];
   }
 
   private normalizeChangeType(
