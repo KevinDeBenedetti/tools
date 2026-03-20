@@ -75,7 +75,6 @@ stages = ["pre-push"]
 # ── Shared hooks from github-workflows ────────────────────────────────────────
 [[repos]]
 repo = "https://github.com/KevinDeBenedetti/github-workflows"
-# renovate: datasource=github-tags depName=KevinDeBenedetti/github-workflows
 rev = "v0.3.0"
 hooks = [
   { id = "check-docs-links" },
