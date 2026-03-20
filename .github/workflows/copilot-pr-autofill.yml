@@ -20,8 +20,10 @@ jobs:
         uses: actions/checkout@v4
 
       # ── Generate PR template suggestions via Copilot SDK ──────────────────
-      # COPILOT_TOKEN must be a Classic PAT from a GitHub account that has
-      # an active Copilot Individual or Business subscription.
+      # COPILOT_TOKEN must be an OAuth user access token (gho_ prefix) from a
+      # GitHub account with an active Copilot Individual or Business subscription.
+      # Obtain it by running: gh auth login && gh auth token
+      # Classic PATs (ghp_ prefix) are NOT supported by the Copilot API.
       - name: Generate template suggestions
         id: copilot
         uses: ./.github/actions/copilot
