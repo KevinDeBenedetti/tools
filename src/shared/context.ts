@@ -5,6 +5,7 @@ import { GitHubClient } from "./github.client";
 import { ActionsLogger } from "./logger";
 import type { ToolContext } from "./types/copilot";
 import { ValidationError } from "./errors";
+import { DEFAULT_MODEL } from "./constants";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -16,7 +17,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  */
 export async function buildContext(): Promise<ToolContext> {
   const token = core.getInput("token", { required: true });
-  const model = core.getInput("model") || "gpt-4.1";
+  const model = core.getInput("model") || DEFAULT_MODEL;
   const optionsRaw = core.getInput("options") || "{}";
 
   let options: Record<string, unknown> = {};

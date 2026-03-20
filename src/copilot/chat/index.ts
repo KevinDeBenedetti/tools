@@ -2,6 +2,7 @@ import * as p from "@clack/prompts";
 import { createInterface } from "node:readline/promises";
 import color from "picocolors";
 import { CopilotChatSession } from "./chat.session";
+import { DEFAULT_MODEL } from "../../shared/constants";
 
 const HELP = `
   ${color.bold("/help")}      Show this message
@@ -11,7 +12,7 @@ const HELP = `
   ${color.bold("/quit")}      Exit chat
 `;
 
-export async function runCopilotChat(token: string, model = "gpt-4.1"): Promise<void> {
+export async function runCopilotChat(token: string, model = DEFAULT_MODEL): Promise<void> {
   p.intro(color.bgCyan(color.black(" 💬 Copilot Chat ")));
   p.log.info(`Model: ${color.bold(model)}  ·  Type ${color.bold("/help")} for commands\n`);
 
@@ -106,7 +107,7 @@ if (import.meta.main) {
   }
 
   const modelFlag = process.argv.find((a) => a.startsWith("--model="));
-  const model = modelFlag ? modelFlag.slice(8) : "gpt-4.1";
+  const model = modelFlag ? modelFlag.slice(8) : DEFAULT_MODEL;
 
   await runCopilotChat(token, model);
 }

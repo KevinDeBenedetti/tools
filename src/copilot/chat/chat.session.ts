@@ -1,6 +1,7 @@
 import { CopilotClient as SDKClient, approveAll } from "@github/copilot-sdk";
 import type { CopilotSession } from "@github/copilot-sdk";
 import { CopilotError } from "../../shared/errors";
+import { DEFAULT_MODEL } from "../../shared/constants";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -30,7 +31,7 @@ export class CopilotChatSession {
 
   constructor(
     token: string,
-    private readonly model = "gpt-4.1",
+    private readonly model = DEFAULT_MODEL,
     private readonly sessionId = "chat-local",
     sdk?: IChatSDK,
   ) {

@@ -145,3 +145,5 @@ All tests use mocked `gh` and `jq` binaries — no real GitHub calls are made.
 - [GitHub — Secrets](./github/secrets.md) — scan for secrets in history
 - [Copilot SDK](./copilot/copilot-sdk.md) — Copilot extension SDK usage
 - [Copilot Instructions](./copilot/instructions.md) — writing Copilot instructions
+- **[Copilot Chat & Sessions](./copilot/chat-and-sessions.md)** — interactive chat, persistent sessions, session resumption
+- **[Copilot PR Summary Workflow](./copilot/pr-summary-workflow.md)** — automated PR summaries in GitHub Actions

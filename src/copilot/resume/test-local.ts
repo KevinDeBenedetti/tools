@@ -9,12 +9,13 @@
  * Optional flags:
  *   --session-id <id>   Override session ID (default: pr-<prNumber>)
  *   --focus <area>      Focus area, e.g. "security"
- *   --model <name>      Model to use (default: gpt-4.1)
+ *   --model <name>      Model to use (default: gpt-5-mini)
  */
 
 import { CopilotClient } from "../../shared/copilot.client";
 import { GitHubClient } from "../../shared/github.client";
 import { ResumeService } from "./resume.service";
+import { DEFAULT_MODEL } from "../../shared/constants";
 
 function arg(flag: string): string | undefined {
   const idx = process.argv.indexOf(flag);
@@ -42,7 +43,7 @@ const prNumber = Number(required("--pr"));
 const prompt = required("--prompt");
 const sessionId = arg("--session-id");
 const focus = arg("--focus");
-const model = arg("--model") ?? "gpt-4.1";
+const model = arg("--model") ?? DEFAULT_MODEL;
 
 if (isNaN(prNumber) || prNumber <= 0) {
   console.error("--pr must be a positive integer");
