@@ -14,6 +14,7 @@
     "format": "oxfmt src",
     "format:check": "oxfmt --check src",
     "tools": "bun run ./src/cli/index.ts",
+    "benchmark": "bun run ./src/openai-benchmark/cli.ts",
     "chat": "bun run ./src/copilot/chat/index.ts",
     "summary": "bun run ./src/copilot/generate/test-local.ts",
     "github": "bun run ./src/github/cli.ts",
@@ -40,18 +41,20 @@
     "@actions/core": "^3.0.0",
     "@actions/github": "^9.0.0",
     "@clack/prompts": "^1.1.0",
-    "@github/copilot-sdk": "^0.2.0",
+    "@github/copilot-sdk": "^1.0.0",
+    "dotenv": "^17.4.2",
     "js-yaml": "^4.1.1",
+    "openai": "^6.42.0",
     "picocolors": "^1.1.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@j178/prek": "^0.3.6",
+    "@j178/prek": "^0.4.4",
     "@types/bun": "^1.3.10",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.5.0",
-    "oxfmt": "^0.41.0",
+    "oxfmt": "^0.53.0",
     "oxlint": "^1.56.0",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   }
 }

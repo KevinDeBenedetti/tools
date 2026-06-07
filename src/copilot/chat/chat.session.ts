@@ -35,7 +35,7 @@ export class CopilotChatSession {
     private readonly sessionId = "chat-local",
     sdk?: IChatSDK,
   ) {
-    this.sdk = sdk ?? new SDKClient({ githubToken: token, useLoggedInUser: false });
+    this.sdk = sdk ?? new SDKClient({ gitHubToken: token, useLoggedInUser: false });
   }
 
   async start(): Promise<void> {

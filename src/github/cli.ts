@@ -7,6 +7,7 @@ import { PurgeReleaseService } from "./purge/purge-release";
 import { PurgeTagsService } from "./purge/purge-tags";
 import { ScanSecretsService } from "./secrets/scan-secrets";
 import { formatError } from "./shared";
+import { log } from "../shared/ui";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -283,15 +284,15 @@ export function parseCliInput(argv: string[]): ParsedInput {
       let key: string;
       let value: string | undefined;
 
-      if (eqIdx !== -1) {
-        key = toCamelCase(arg.slice(2, eqIdx));
-        value = arg.slice(eqIdx + 1);
-      } else {
+      if (eqIdx === -1) {
         key = toCamelCase(arg.slice(2));
         // Peek next arg for value if it doesn't look like a flag
         if (args.length > 0 && !args[0]!.startsWith("-")) {
           value = args.shift()!;
         }
+      } else {
+        key = toCamelCase(arg.slice(2, eqIdx));
+        value = arg.slice(eqIdx + 1);
       }
 
       // Resolve type
@@ -310,25 +311,25 @@ export function parseCliInput(argv: string[]): ParsedInput {
         parsed = value;
       }
 
-      if (existing !== undefined) {
-        options[key] = Array.isArray(existing) ? [...existing, parsed] : [existing, parsed];
-      } else {
+      if (existing === undefined) {
         options[key] = parsed;
+      } else {
+        options[key] = Array.isArray(existing) ? [...existing, parsed] : [existing, parsed];
       }
       continue;
     }
 
     // Positional
-    if (!arg.startsWith("-")) {
-      if (command !== undefined) {
-        throw new Error(`Unexpected positional argument: ${arg}`);
-      }
-      if (!COMMAND_NAMES.includes(arg as Command)) {
-        throw new Error(`Unknown command: ${arg}. Use --help to see available commands.`);
-      }
-      command = arg as Command;
+    if (arg.startsWith("-")) {
       continue;
     }
+    if (command !== undefined) {
+      throw new Error(`Unexpected positional argument: ${arg}`);
+    }
+    if (!COMMAND_NAMES.includes(arg as Command)) {
+      throw new Error(`Unknown command: ${arg}. Use --help to see available commands.`);
+    }
+    command = arg as Command;
   }
 
   return { command, help, interactive, options };
@@ -349,16 +350,19 @@ export function formatGeneralHelp(): string {
     lines.push(`  ${color.cyan(name.padEnd(18))} ${def.description}`);
   }
 
-  lines.push("", `${color.bold("Options:")}`);
-  lines.push("  --help, -h         Show help");
-  lines.push("  --interactive, -i  Launch interactive TUI");
-  lines.push("");
-  lines.push(`Run ${color.cyan("bun run github [command] --help")} for command-specific help.`);
+  lines.push(
+    "",
+    `${color.bold("Options:")}`,
+    "  --help, -h         Show help",
+    "  --interactive, -i  Launch interactive TUI",
+    "",
+    `Run ${color.cyan("bun run github [command] --help")} for command-specific help.`,
+  );
 
   return lines.join("\n");
 }
 
-export function formatCommandHelp(command: Command | string): string {
+export function formatCommandHelp(command: string): string {
   const def = COMMANDS[command as Command];
   if (!def) {
     return `Unknown command: ${command}`;
@@ -375,7 +379,7 @@ export function formatCommandHelp(command: Command | string): string {
   for (const flag of def.flags) {
     const label = `--${toKebabCase(flag.name)}`;
     const req = flag.required ? color.red(" (required)") : "";
-    const def_ = flag.default !== undefined ? color.dim(` [${flag.default}]`) : "";
+    const def_ = flag.default === undefined ? "" : color.dim(` [${JSON.stringify(flag.default)}]`);
     lines.push(`  ${label.padEnd(20)} ${flag.description}${req}${def_}`);
   }
 
@@ -402,34 +406,29 @@ export function shouldUseInteractive(parsed: ParsedInput, isTTY: boolean): boole
 
 // ── Command preview ────────────────────────────────────────────────────────────
 
-export function buildCommandPreview(
-  command: Command | string,
-  options: Record<string, unknown>,
-): string {
-  const flags: string[] = [];
-
-  for (const [key, value] of Object.entries(options)) {
-    const flag = `--${toKebabCase(key)}`;
-
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        flags.push(`${flag} ${String(item)}`);
-      }
-    } else if (value === true) {
-      flags.push(flag);
-    } else if (value === false || value === undefined) {
-      // Omit
-    } else {
-      const strVal = String(value);
-      flags.push(strVal.includes(" ") ? `${flag} "${strVal}"` : `${flag} ${strVal}`);
-    }
+function serializeFlag(flag: string, value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => `${flag} ${String(item)}`);
   }
+  if (value === true) return [flag];
+  if (value === false || value === undefined) return [];
+  let s: string;
+  if (typeof value === "string") {
+    s = value;
+  } else if (typeof value === "number" || typeof value === "boolean") {
+    s = String(value);
+  } else {
+    s = JSON.stringify(value);
+  }
+  return [s.includes(" ") ? `${flag} "${s}"` : `${flag} ${s}`];
+}
 
+export function buildCommandPreview(command: string, options: Record<string, unknown>): string {
+  const flags = Object.entries(options).flatMap(([key, value]) =>
+    serializeFlag(`--${toKebabCase(key)}`, value),
+  );
   const base = `bun run github:${command}`;
-  if (flags.length === 0) {
-    return base;
-  }
-  return `${base} -- ${flags.join(" ")}`;
+  return flags.length === 0 ? base : `${base} -- ${flags.join(" ")}`;
 }
 
 // ── Interactive TUI ────────────────────────────────────────────────────────────
@@ -439,7 +438,7 @@ async function promptString(label: string, placeholder?: string): Promise<string
   if (p.isCancel(val)) {
     return undefined;
   }
-  return (val as string) || undefined;
+  return val || undefined;
 }
 
 async function promptBoolean(label: string): Promise<boolean> {
@@ -447,7 +446,7 @@ async function promptBoolean(label: string): Promise<boolean> {
   if (p.isCancel(val)) {
     return false;
   }
-  return val as boolean;
+  return val;
 }
 
 async function promptNumber(label: string, defaultValue?: number): Promise<number> {
@@ -455,11 +454,11 @@ async function promptNumber(label: string, defaultValue?: number): Promise<numbe
     message: label,
     placeholder: defaultValue !== undefined ? String(defaultValue) : undefined,
   });
-  if (p.isCancel(val) || !val) {
-    return defaultValue ?? 0;
+  if (val && !p.isCancel(val)) {
+    const n = Number(val);
+    return Number.isNaN(n) ? (defaultValue ?? 0) : n;
   }
-  const n = Number(val);
-  return Number.isNaN(n) ? (defaultValue ?? 0) : n;
+  return defaultValue ?? 0;
 }
 
 async function collectOptions(command: Command): Promise<Record<string, unknown>> {
@@ -476,10 +475,13 @@ async function collectOptions(command: Command): Promise<Record<string, unknown>
       const val = await promptNumber(`${flag.description} (number)`, flag.default as number);
       options[flag.name] = val;
     } else if (flag.type === "string" || flag.type === "string[]") {
-      const val = await promptString(
-        flag.description,
-        flag.default ? String(flag.default) : undefined,
-      );
+      const defaultStr =
+        typeof flag.default === "string" ||
+        typeof flag.default === "number" ||
+        typeof flag.default === "boolean"
+          ? String(flag.default)
+          : undefined;
+      const val = await promptString(flag.description, defaultStr);
       if (val) {
         options[flag.name] = flag.type === "string[]" ? [val] : val;
       }
@@ -490,7 +492,7 @@ async function collectOptions(command: Command): Promise<Record<string, unknown>
 }
 
 async function runInteractive(): Promise<void> {
-  p.intro(color.bgBlue(color.white(" GitHub Tools ")));
+  p.intro(color.bold(" GitHub Tools ") + color.dim("— automation CLI"));
 
   const selected = await p.select({
     message: "Which tool do you want to run?",
@@ -506,7 +508,7 @@ async function runInteractive(): Promise<void> {
     return;
   }
 
-  const command = selected as Command;
+  const command = selected;
 
   p.note(COMMANDS[command].description, command);
 
@@ -527,42 +529,48 @@ async function runInteractive(): Promise<void> {
 
 // ── Command runners ────────────────────────────────────────────────────────────
 
+function logPurgeResult(deleted: number, total: number, noun: string): void {
+  if (deleted > 0) {
+    log.success(`Deleted ${deleted} of ${total} ${noun}.`);
+  } else {
+    log.info(`No ${noun} deleted (${total} found).`);
+  }
+}
+
 async function runCommand(command: Command, options: Record<string, unknown>): Promise<void> {
   switch (command) {
     case "detect-bots": {
       const svc = new DetectBotsService(options);
       const result = await svc.detect();
-      console.log(JSON.stringify(result, null, 2));
+      log.blank();
+      process.stdout.write(JSON.stringify(result, null, 2) + "\n");
       break;
     }
     case "purge-actions": {
-      const svc = new PurgeActionsService(options);
-      const result = await svc.purge();
-      console.log(`Deleted ${result.deleted} of ${result.total} runs.`);
+      const result = await new PurgeActionsService(options).purge();
+      logPurgeResult(result.deleted, result.total, "workflow runs");
       break;
     }
     case "purge-packages": {
-      const svc = new PurgePackagesService(options);
-      const result = await svc.purge();
-      console.log(`Deleted ${result.deleted} package versions.`);
+      const result = await new PurgePackagesService(options).purge();
+      logPurgeResult(result.deleted, result.deleted, "package versions");
       break;
     }
     case "purge-release": {
-      const svc = new PurgeReleaseService(options);
-      const result = await svc.purge();
-      console.log(`Deleted ${result.deleted} of ${result.total} releases.`);
+      const result = await new PurgeReleaseService(options).purge();
+      logPurgeResult(result.deleted, result.total, "releases");
       break;
     }
     case "purge-tags": {
-      const svc = new PurgeTagsService(options);
-      const result = await svc.purge();
-      console.log(`Deleted ${result.deleted} of ${result.total} tags.`);
+      const result = await new PurgeTagsService(options).purge();
+      logPurgeResult(result.deleted, result.total, "tags");
       break;
     }
     case "scan-secrets": {
       const svc = new ScanSecretsService(options);
       const result = await svc.scan();
-      console.log(JSON.stringify(result, null, 2));
+      log.blank();
+      process.stdout.write(JSON.stringify(result, null, 2) + "\n");
       break;
     }
   }

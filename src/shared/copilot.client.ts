@@ -18,7 +18,7 @@ export class CopilotClient implements ICopilotClient {
 
   constructor(token: string, model = DEFAULT_MODEL) {
     this.sdk = new SDKClient({
-      githubToken: token,
+      gitHubToken: token,
       useLoggedInUser: false,
     });
     this.model = model;

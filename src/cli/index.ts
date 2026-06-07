@@ -2,15 +2,17 @@ import * as p from "@clack/prompts";
 import color from "picocolors";
 import { runGithubCli } from "../github/cli";
 import { runCopilotChat } from "../copilot/chat/index";
+import { runOpenAIBenchmarkCli } from "../openai-benchmark/cli";
 
 // ── Tool categories ────────────────────────────────────────────────────────────
 
-type Category = "github" | "copilot" | "chat" | "todo";
+type Category = "github" | "copilot" | "chat" | "todo" | "openai-benchmark";
 
 const categoryDescriptions: Record<Category, string> = {
   chat: "Interactive Copilot chat in the terminal — ask, prompt, summarize",
   copilot: "Copilot-powered code review, analysis, generation, and audit",
   github: "GitHub automation tools (purge runs/releases/tags, detect bots, scan secrets)",
+  "openai-benchmark": "Benchmark OpenAI models — latency, TTFT, throughput, cost",
   todo: "Bidirectional sync between TODO.yml and GitHub Issues",
 };
 
@@ -33,7 +35,7 @@ const copilotUsage: Record<CopilotTool, string> = {
   review: "GITHUB_TOKEN=... bun run src/index.ts  # triggered by GitHub Actions",
 };
 
-// ── Todo mode info ─────────────────────────────────────────────────────────────
+// ── Sync mode info ─────────────────────────────────────────────────────────────
 
 type TodoMode = "push" | "pull" | "labels";
 
@@ -52,7 +54,7 @@ async function promptSelect<T extends string>(
   if (p.isCancel(value) || typeof value !== "string") {
     return undefined;
   }
-  return value as T;
+  return value;
 }
 
 async function promptConfirm(opts: Parameters<typeof p.confirm>[0]): Promise<boolean | undefined> {
@@ -102,17 +104,17 @@ async function runCopilotMenu(): Promise<void> {
   );
 }
 
-// ── Todo sub-menu ──────────────────────────────────────────────────────────────
+// ── Sync sub-menu ──────────────────────────────────────────────────────────────
 
 async function runTodoMenu(): Promise<void> {
   const REPO = process.env["GITHUB_REPOSITORY"];
-  if (!REPO) {
+  if (REPO) {
+    p.note(`Repository: ${REPO}`, "Todo Sync");
+  } else {
     p.note(
       "Set GITHUB_REPOSITORY=owner/repo before running todo sync.",
-      "⚠️  Missing GITHUB_REPOSITORY",
+      "Missing GITHUB_REPOSITORY",
     );
-  } else {
-    p.note(`Repository: ${REPO}`, "Todo Sync");
   }
 
   const mode = await promptSelect<TodoMode>({
@@ -154,27 +156,32 @@ async function runTodoMenu(): Promise<void> {
 // ── Main unified launcher ──────────────────────────────────────────────────────
 
 async function runMainMenu(): Promise<void> {
-  p.intro(color.bgMagenta(color.white(" 🔧 tools ")));
+  p.intro(color.bold(" tools ") + color.dim("— dev tooling CLI"));
 
   const category = await promptSelect<Category>({
-    message: "Select a tool category",
+    message: "Select a category",
     options: [
       {
         hint: categoryDescriptions.github,
-        label: "GitHub Tools",
+        label: "GitHub",
         value: "github",
       },
       {
         hint: categoryDescriptions.copilot,
-        label: "Copilot Tools (CI/CD)",
+        label: "Copilot  (CI/CD)",
         value: "copilot",
       },
       {
         hint: categoryDescriptions.chat,
-        label: "💬 Copilot Chat",
+        label: "Copilot Chat",
         value: "chat",
       },
       { hint: categoryDescriptions.todo, label: "Todo Sync", value: "todo" },
+      {
+        hint: categoryDescriptions["openai-benchmark"],
+        label: "OpenAI Benchmark",
+        value: "openai-benchmark",
+      },
     ],
   });
 
@@ -206,6 +213,11 @@ async function runMainMenu(): Promise<void> {
     }
     case "todo": {
       await runTodoMenu();
+      p.outro("Done.");
+      break;
+    }
+    case "openai-benchmark": {
+      await runOpenAIBenchmarkCli([], true);
       p.outro("Done.");
       break;
     }
