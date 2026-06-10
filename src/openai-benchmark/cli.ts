@@ -5,6 +5,7 @@ import { benchmarkModel } from "./benchmark";
 import { loadConfig } from "./config";
 import { DEFAULT_MODEL_IDS, MODELS } from "./models";
 import { printResults, createSpinner, fmtMs } from "./reporter";
+import { log } from "../shared/ui";
 
 const DEFAULT_PROMPT = "Explain the difference between concurrency and parallelism in 3 sentences.";
 
@@ -163,25 +164,18 @@ async function runBenchmark(opts: {
   maxTokens: number;
   stream: boolean;
 }): Promise<void> {
-  let benchmarkConfig;
-  try {
-    benchmarkConfig = loadConfig();
-  } catch (error) {
-    console.error(
-      color.red(
-        "  Configuration Error: " + (error instanceof Error ? error.message : String(error)),
-      ),
-    );
+  const benchmarkConfig = loadConfig();
+
+  if (!benchmarkConfig.apiKey) {
+    log.error("OPENAI_API_KEY is not set. Export it or add it to a .env file.");
     process.exitCode = 1;
     return;
   }
 
-  const clientOptions: ConstructorParameters<typeof OpenAI>[0] = {
+  const client = new OpenAI({
     apiKey: benchmarkConfig.apiKey,
     baseURL: benchmarkConfig.apiUrl,
-  };
-
-  const client = new OpenAI(clientOptions);
+  });
   const config = {
     maxTokens: opts.maxTokens,
     prompt: opts.prompt,
@@ -200,11 +194,16 @@ async function runBenchmark(opts: {
 
   const results = [];
   for (const modelId of opts.models) {
-    const modelLabel = MODELS.find((m) => m.id === modelId)?.label || modelId;
-    const modelSpinner = createSpinner(`Running benchmark for ${color.bold(modelLabel)}`);
+    const modelDef =
+      benchmarkConfig.models.find((m) => m.id === modelId) ?? MODELS.find((m) => m.id === modelId);
+    if (!modelDef) {
+      log.error(`Unknown model: ${modelId}. Check your benchmark.config.json.`);
+      continue;
+    }
+    const modelSpinner = createSpinner(`Running benchmark for ${color.bold(modelDef.label)}`);
     let successCount = 0;
 
-    const result = await benchmarkModel(client, modelId, config, (run, r) => {
+    const result = await benchmarkModel(client, modelDef, config, (run, r) => {
       if (!r.error) successCount++;
       const statusMsg = r.error
         ? `Run ${run}/${opts.runs} — ${color.red("Error")}`
@@ -212,10 +211,10 @@ async function runBenchmark(opts: {
 
       if (run === opts.runs) {
         modelSpinner.stop(
-          `${color.bold(modelLabel)} completed (${successCount}/${opts.runs} successful)`,
+          `${color.bold(modelDef.label)} completed (${successCount}/${opts.runs} successful)`,
         );
       } else {
-        modelSpinner.log(`  ${color.dim(modelLabel)} ${statusMsg}`);
+        modelSpinner.log(`  ${color.dim(modelDef.label)} ${statusMsg}`);
       }
     });
     results.push(result);

@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { estimateCost, getModel, type ModelDef } from "./models";
+import { estimateCost, type ModelDef } from "./models";
 
 export interface BenchmarkConfig {
   prompt: string;
@@ -121,13 +121,10 @@ async function runOnce(
 
 export async function benchmarkModel(
   client: OpenAI,
-  modelId: string,
+  model: ModelDef,
   config: BenchmarkConfig,
   onRunComplete?: (run: number, result: RunResult) => void,
 ): Promise<ModelBenchmarkResult> {
-  const model = getModel(modelId);
-  if (!model) throw new Error(`Unknown model: ${modelId}`);
-
   const runs: RunResult[] = [];
   for (let i = 0; i < config.runs; i++) {
     const result = await runOnce(client, model, config);
@@ -150,7 +147,7 @@ export async function benchmarkModel(
 
   return {
     label: model.label,
-    modelId,
+    modelId: model.id,
     runs,
     stats: {
       inputTokens,
