@@ -6,12 +6,19 @@ import { PurgePackagesService } from "./purge/purge-packages";
 import { PurgeReleaseService } from "./purge/purge-release";
 import { PurgeTagsService } from "./purge/purge-tags";
 import { ScanSecretsService } from "./secrets/scan-secrets";
+import {
+  scanAuthors,
+  executeClean,
+  type RewriteRule,
+  type CoAuthorTrailer,
+} from "./authors/clean-authors";
 import { formatError } from "./shared";
-import { log } from "../shared/ui";
+import { log, table } from "../shared/ui";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type Command =
+  | "clean-authors"
   | "detect-bots"
   | "purge-actions"
   | "purge-packages"
@@ -42,6 +49,27 @@ interface FlagDef {
 // ── Command definitions ────────────────────────────────────────────────────────
 
 const COMMANDS: Record<Command, CommandDef> = {
+  "clean-authors": {
+    description: "Normalize author identities and remove Co-Authored-By trailers",
+    flags: [
+      {
+        description: "Canonical author email to keep (others mapped to this one)",
+        name: "canonical",
+        type: "string",
+      },
+      {
+        default: true,
+        description: "Remove Co-Authored-By trailers from commit messages",
+        name: "removeCoAuthors",
+        type: "boolean",
+      },
+      {
+        description: "Preview changes without rewriting history",
+        name: "dryRun",
+        type: "boolean",
+      },
+    ],
+  },
   "detect-bots": {
     description: "Detect bot commits in a GitHub repository",
     flags: [
@@ -491,6 +519,142 @@ async function collectOptions(command: Command): Promise<Record<string, unknown>
   return options;
 }
 
+// ── clean-authors wizard ───────────────────────────────────────────────────────
+
+async function promptCanonical(
+  authors: { name: string; email: string; commitCount: number }[],
+): Promise<{ name: string; email: string } | null> {
+  const choice = await p.select({
+    message: "Select the canonical identity to keep",
+    options: authors.map((a) => ({
+      hint: `${a.commitCount} commit${a.commitCount === 1 ? "" : "s"}`,
+      label: `${a.name} <${a.email}>`,
+      value: a.email,
+    })),
+  });
+  if (p.isCancel(choice)) return null;
+  return authors.find((a) => a.email.toLowerCase() === choice.toLowerCase()) ?? null;
+}
+
+async function promptRemoveCoAuthors(coAuthors: CoAuthorTrailer[]): Promise<boolean | null> {
+  const n = coAuthors.length;
+  const answer = await p.confirm({
+    initialValue: true,
+    message: `Remove ${n} Co-Authored-By trailer${n === 1 ? "" : "s"}?`,
+  });
+  if (p.isCancel(answer)) return null;
+  return answer;
+}
+
+function printRewritePlan(
+  rules: RewriteRule[],
+  coAuthors: CoAuthorTrailer[],
+  removeCoAuthors: boolean,
+): void {
+  console.log(`\n  ${color.bold("Rewrite plan")}\n`);
+  for (const r of rules) {
+    log.step(`${r.fromName} <${r.fromEmail}>  →  ${r.toName} <${r.toEmail}>`);
+  }
+  if (removeCoAuthors) {
+    for (const ca of coAuthors) {
+      log.step(`Remove Co-Authored-By: ${ca.name} <${ca.email}>`);
+    }
+  }
+  console.log();
+  log.warn("History will be rewritten — force-push required: git push --force-with-lease");
+  console.log();
+}
+
+async function runCleanAuthorsInteractive(): Promise<void> {
+  const repoPath = process.cwd();
+
+  const spinner = p.spinner();
+  spinner.start("Scanning repository authors…");
+  let scanResult;
+  try {
+    scanResult = scanAuthors(repoPath);
+    spinner.stop("Scan complete");
+  } catch (err) {
+    spinner.stop("Scan failed");
+    log.error(formatError(err));
+    return;
+  }
+
+  log.blank();
+  table(
+    [{ label: "Author" }, { label: "Commits", align: "right" }],
+    scanResult.authors.map((a) => [`${a.name} <${a.email}>`, String(a.commitCount)]),
+  );
+
+  if (scanResult.coAuthors.length > 0) {
+    log.blank();
+    table(
+      [{ label: "Co-Authored-By trailer" }, { label: "Commits", align: "right" }],
+      scanResult.coAuthors.map((a) => [`${a.name} <${a.email}>`, String(a.commitCount)]),
+    );
+  }
+
+  log.blank();
+
+  if (scanResult.authors.length <= 1 && scanResult.coAuthors.length === 0) {
+    log.info("All commits already use a single identity. Nothing to clean.");
+    return;
+  }
+
+  const canonical = await promptCanonical(scanResult.authors);
+  if (!canonical) {
+    p.cancel("Cancelled.");
+    return;
+  }
+
+  let removeCoAuthors = false;
+  if (scanResult.coAuthors.length > 0) {
+    const answer = await promptRemoveCoAuthors(scanResult.coAuthors);
+    if (answer === null) {
+      p.cancel("Cancelled.");
+      return;
+    }
+    removeCoAuthors = answer;
+  }
+
+  const rules: RewriteRule[] = scanResult.authors
+    .filter((a) => a.email.toLowerCase() !== canonical.email.toLowerCase())
+    .map((a) => ({
+      fromEmail: a.email,
+      fromName: a.name,
+      toEmail: canonical.email,
+      toName: canonical.name,
+    }));
+
+  if (rules.length === 0 && !removeCoAuthors) {
+    log.info("Nothing to rewrite.");
+    return;
+  }
+
+  printRewritePlan(rules, scanResult.coAuthors, removeCoAuthors);
+
+  const confirmed = await p.confirm({ message: "Proceed?" });
+  if (p.isCancel(confirmed) || confirmed === false) {
+    p.cancel("Cancelled.");
+    return;
+  }
+
+  const result = executeClean(repoPath, rules, removeCoAuthors, false);
+
+  log.blank();
+  if (result.appliedRules > 0) {
+    log.success(
+      `Rewrote ${result.appliedRules} author mapping${result.appliedRules === 1 ? "" : "s"} via ${result.method}.`,
+    );
+  }
+  if (result.removedCoAuthors) {
+    log.success("Removed Co-Authored-By trailers.");
+  }
+  log.info("Next step: git push --force-with-lease");
+}
+
+// ── Interactive TUI ────────────────────────────────────────────────────────────
+
 async function runInteractive(): Promise<void> {
   p.intro(color.bold(" GitHub Tools ") + color.dim("— automation CLI"));
 
@@ -509,6 +673,12 @@ async function runInteractive(): Promise<void> {
   }
 
   const command = selected;
+
+  if (command === "clean-authors") {
+    await runCleanAuthorsInteractive();
+    p.outro(color.green("Done!"));
+    return;
+  }
 
   p.note(COMMANDS[command].description, command);
 
@@ -537,8 +707,75 @@ function logPurgeResult(deleted: number, total: number, noun: string): void {
   }
 }
 
+function runCleanAuthors(options: Record<string, unknown>): void {
+  const repoPath = process.cwd();
+  const scanResult = scanAuthors(repoPath);
+  const canonicalEmail = options["canonical"] as string | undefined;
+
+  if (!canonicalEmail) {
+    log.blank();
+    table(
+      [{ label: "Author" }, { label: "Commits", align: "right" }],
+      scanResult.authors.map((a) => [`${a.name} <${a.email}>`, String(a.commitCount)]),
+    );
+    if (scanResult.coAuthors.length > 0) {
+      log.blank();
+      table(
+        [{ label: "Co-Authored-By trailer" }, { label: "Commits", align: "right" }],
+        scanResult.coAuthors.map((a) => [`${a.name} <${a.email}>`, String(a.commitCount)]),
+      );
+    }
+    log.blank();
+    log.info("Specify --canonical <email> to select the identity to keep.");
+    return;
+  }
+
+  const canonical = scanResult.authors.find(
+    (a) => a.email.toLowerCase() === canonicalEmail.toLowerCase(),
+  );
+  if (!canonical) {
+    throw new Error(`No author with email '${canonicalEmail}' found in git history.`);
+  }
+
+  const removeCoAuthors = options["removeCoAuthors"] !== false;
+  const dryRun = Boolean(options["dryRun"]);
+  const rules: RewriteRule[] = scanResult.authors
+    .filter((a) => a.email.toLowerCase() !== canonical.email.toLowerCase())
+    .map((a) => ({
+      fromEmail: a.email,
+      fromName: a.name,
+      toEmail: canonical.email,
+      toName: canonical.name,
+    }));
+
+  if (dryRun) {
+    printRewritePlan(rules, scanResult.coAuthors, removeCoAuthors);
+    log.info("Dry run — no changes made.");
+    return;
+  }
+
+  const result = executeClean(repoPath, rules, removeCoAuthors, false);
+  if (result.appliedRules > 0) {
+    log.success(
+      `Rewrote ${result.appliedRules} author mapping${result.appliedRules === 1 ? "" : "s"} via ${result.method}.`,
+    );
+  }
+  if (result.removedCoAuthors) {
+    log.success("Removed Co-Authored-By trailers.");
+  }
+  if (result.appliedRules > 0 || result.removedCoAuthors) {
+    log.warn("Force-push required: git push --force-with-lease");
+  } else {
+    log.info("Nothing to rewrite.");
+  }
+}
+
 async function runCommand(command: Command, options: Record<string, unknown>): Promise<void> {
   switch (command) {
+    case "clean-authors": {
+      runCleanAuthors(options);
+      break;
+    }
     case "detect-bots": {
       const svc = new DetectBotsService(options);
       const result = await svc.detect();
