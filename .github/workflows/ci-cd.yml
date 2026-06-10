@@ -47,6 +47,6 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: KevinDeBenedetti/github-workflows/.github/workflows/cd-docs.yml@main
     with:
-      app-id: ${{ vars.DOCS_APP_ID }}
+      client-id: ${{ vars.DOCS_APP_CLIENT_ID }}
     secrets:
       APP_PRIVATE_KEY: ${{ secrets.DOCS_APP_PRIVATE_KEY }}
