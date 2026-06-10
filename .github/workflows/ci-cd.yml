@@ -10,6 +10,9 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     uses: KevinDeBenedetti/github-workflows/.github/workflows/ci-node.yml@main
@@ -30,7 +33,6 @@ jobs:
       run-secret-scan: true
       # CodeQL disabled: No TypeScript/JavaScript SAST needed for tools management (use linter + typecheck)
       run-codeql: false
-    secrets: inherit
 
   bot-check:
     if: github.event_name == 'pull_request'
@@ -44,5 +46,7 @@ jobs:
     needs: [ci, security]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: KevinDeBenedetti/github-workflows/.github/workflows/cd-docs.yml@main
+    with:
+      app-id: ${{ vars.DOCS_APP_ID }}
     secrets:
-      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      APP_PRIVATE_KEY: ${{ secrets.DOCS_APP_PRIVATE_KEY }}
