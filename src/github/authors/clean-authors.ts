@@ -1,4 +1,4 @@
-import { execSync, spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -38,7 +38,7 @@ export interface CleanResult {
 // ── Git helpers ────────────────────────────────────────────────────────────────
 
 function git(args: string[], cwd: string): string {
-  return execSync(["git", ...args].join(" "), {
+  return execFileSync("git", args, {
     cwd,
     encoding: "utf-8",
     stdio: ["pipe", "pipe", "pipe"],
@@ -92,7 +92,7 @@ export function scanAuthors(repoPath: string): ScanResult {
 
 function hasFilterRepo(): boolean {
   try {
-    execSync("git filter-repo --version", { stdio: "pipe" });
+    execFileSync("git", ["filter-repo", "--version"], { stdio: "pipe" });
     return true;
   } catch {
     return false;
