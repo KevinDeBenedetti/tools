@@ -55,12 +55,15 @@ gh auth status
 ## Common first commands
 
 ```bash
-bun run tools          # top-level interactive menu
-bun run github         # GitHub maintenance CLI (interactive when no command given)
+bun run tools          # unified CLI — interactive menu on a TTY
+bun run tools --help   # list every group and command
+bun run github         # github group (interactive when no command given)
 bun run test           # run the full test suite
 bun run typecheck      # strict TypeScript check
 bun run lint           # oxlint
 ```
+
+The unified CLI exposes four groups — `github`, `todo`, `benchmark` and `copilot` — and every command can be invoked either through `bun run tools <group> <command>` or its pinned alias (`bun run github`, `bun run todo`, `bun run benchmark`, `bun run chat`).
 
 ## GitHub CLI command overview
 
