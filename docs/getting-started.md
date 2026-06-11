@@ -8,35 +8,29 @@ title: Getting Started
 
 The following tools are required to use this repository.
 
-| Tool             | Purpose                                        | Install (macOS)             | Install (Debian/Ubuntu)          |
-| ---------------- | ---------------------------------------------- | --------------------------- | -------------------------------- |
-| `bash`           | Shell runtime for all scripts                  | built-in                    | `apt install bash`               |
-| `make`           | Task runner — maps targets to shell scripts    | `xcode-select --install`    | `apt install make`               |
-| `gh`             | GitHub CLI — authenticate and call GitHub APIs | `brew install gh`           | see [cli.github.com][gh-install] |
-| `jq`             | JSON processing for API responses              | `brew install jq`           | `apt install jq`                 |
-| `bats`           | Shell test framework                           | `brew install bats-core`    | `apt install bats`               |
-| `shellcheck`     | Static analysis for bash scripts               | `brew install shellcheck`   | `apt install shellcheck`         |
-| `docker`         | Required for container workflow templates      | [Docker Desktop][docker-dl] | `apt install docker.io`          |
-| `cargo`/`rustup` | Required to build the `devkit` CLI app         | `brew install rustup`       | `curl https://sh.rustup.rs       | sh` |
+| Tool             | Purpose                                          | Install (macOS)             | Install (Debian/Ubuntu)          |
+| ---------------- | ------------------------------------------------ | --------------------------- | -------------------------------- |
+| `bun`            | Runtime, package manager and test runner         | `brew install oven-sh/bun/bun` | see [bun.sh][bun-install]     |
+| `gh`             | GitHub CLI — authenticate and call GitHub APIs   | `brew install gh`           | see [cli.github.com][gh-install] |
+| `git filter-repo`| Fast history rewriting (clean-authors, bot purge)| `brew install git-filter-repo` | `apt install git-filter-repo` |
+| `docker`         | Required for container workflow templates        | [Docker Desktop][docker-dl] | `apt install docker.io`          |
 
+[bun-install]: https://bun.sh
 [gh-install]: https://cli.github.com
 [docker-dl]: https://www.docker.com/products/docker-desktop/
 
-## Verify your environment
+`git filter-repo` is optional — `clean-authors` falls back to `git filter-branch` when it is missing, but `filter-repo` is much faster and safer.
+
+## Install
 
 ```bash
-command -v bash make gh jq bats shellcheck
-```
-
-Check Git submodules (Bats helpers) are initialised:
-
-```bash
-git submodule update --init --recursive
+bun install
+bunx prek install   # set up pre-commit/pre-push hooks
 ```
 
 ## Authenticate with GitHub
 
-Log in and request the scopes needed by all scripts:
+Log in and request the scopes needed by the maintenance commands:
 
 ```bash
 gh auth login
@@ -55,86 +49,84 @@ gh auth status
 ```
 
 ::: warning Required scopes
-`purge-packages.sh` requires `read:packages` for dry-runs and additionally `delete:packages` for actual deletion. The script checks both and prints a clear remediation command if scopes are missing.
+`purge-packages` requires `read:packages` for previews and additionally `delete:packages` for actual deletion.
 :::
 
 ## Common first commands
 
 ```bash
-make help      # list all available targets
-make test      # run the full Bats test suite
-make lint      # run ShellCheck on every script
+bun run tools          # top-level interactive menu
+bun run github         # GitHub maintenance CLI (interactive when no command given)
+bun run test           # run the full test suite
+bun run typecheck      # strict TypeScript check
+bun run lint           # oxlint
 ```
 
-## Makefile target overview
+## GitHub CLI command overview
 
-| Target           | Action                                          |
-| ---------------- | ----------------------------------------------- |
-| `help`           | Print all available targets with descriptions   |
-| `purge-actions`  | Delete GitHub Actions workflow runs             |
-| `purge-packages` | Delete GitHub package versions                  |
-| `purge-release`  | Delete GitHub releases                          |
-| `purge-tags`     | Delete Git tags from a remote repo              |
-| `detect-bots`    | Find (and optionally purge) bot commits         |
-| `scan-secrets`   | Scan working tree / history for secret patterns |
-| `test`           | Run all Bats tests under `tests/github/`        |
-| `test-<script>`  | Run tests for a single script                   |
-| `lint`           | Run ShellCheck with `--severity=warning`        |
+| Command          | Action                                            |
+| ---------------- | ------------------------------------------------- |
+| `clean-authors`  | Normalize author identities, strip Co-Authored-By |
+| `detect-bots`    | Find (and optionally purge) bot commits           |
+| `purge-actions`  | Delete GitHub Actions workflow runs               |
+| `purge-packages` | Delete GitHub package versions                    |
+| `purge-release`  | Delete GitHub releases                            |
+| `purge-tags`     | Delete Git tags from a remote repo                |
+| `scan-secrets`   | Scan working tree / history for secret patterns   |
 
 ## Usage model
 
-All scripts are invoked through the root Makefile, which forwards extra flags through `ARGS`:
+Each command can be invoked through `bun run github` or its dedicated script:
 
 ```bash
-make purge-actions  ARGS="--repo owner/repo --dry-run"
-make purge-packages ARGS="--owner your-user --package-type container --dry-run"
-make purge-release  ARGS="--repo owner/repo --keep-latest 3"
-make purge-tags     ARGS="--repo owner/repo --tag-pattern 'v0.*' --dry-run"
-make detect-bots    ARGS="--repo owner/repo --format json"
-make scan-secrets   ARGS="--local --history"
+bun run github -- purge-actions --repo owner/repo
+bun run github:purge-tags -- --repo owner/repo --pattern 'v0.*'
+bun run github:clean-authors -- --canonical you@example.com
+bun run github:detect-bots -- --format json
+bun run github:scan-secrets -- --local --history
 ```
 
-You can also call scripts directly:
-
-```bash
-./shell/github/purge-actions.sh --help
-./shell/github/scan-secrets.sh --dry-run
-```
+Run `bun run github -- <command> --help` for command-specific flags, or `bun run github:menu` for the interactive TUI.
 
 ## Safety guidance
 
-All destructive scripts support `--dry-run`. **Always preview before deleting.**
+Destructive commands (`purge-*`, `clean-authors`) **default to a dry-run preview**. Nothing is deleted or rewritten until you pass `--execute`.
 
 ```bash
 # See what would be deleted — nothing is removed
-make purge-packages ARGS="--owner you --package-type container --dry-run"
+bun run github:purge-packages -- --repo owner/repo --package-name app
 
-# Then run without --dry-run once satisfied
-make purge-packages ARGS="--owner you --package-type container --keep-latest 2"
+# Then add --execute once satisfied
+bun run github:purge-packages -- --repo owner/repo --package-name app --keep-latest 2 --execute
 ```
 
-Use `--keep-latest <n>` to retain a minimum number of recent artifacts:
+Use `--keep-latest <n>` to retain a minimum number of recent artifacts, and pattern flags to narrow the target set:
 
 ```bash
-make purge-actions ARGS="--repo owner/repo --keep-latest 5"
+bun run github:purge-actions -- --repo owner/repo --keep-latest 5 --execute
+bun run github:purge-tags -- --repo owner/repo --pattern 'v0.*' --exclude '*-rc*'
 ```
 
-Use pattern flags to narrow the target set before deleting:
+`clean-authors` rewrites history; prefer running it against a fresh clone with `--repo`:
 
 ```bash
-make purge-tags    ARGS="--repo owner/repo --tag-pattern 'v0.*' --dry-run"
-make purge-packages ARGS="--owner you --version-pattern '*-rc*' --dry-run"
+# Scan identities and Co-Authored-By trailers (read-only)
+bun run github:clean-authors -- --repo owner/repo
+
+# Preview the rewrite plan, then execute and force-push
+bun run github:clean-authors -- --repo owner/repo --canonical you@example.com
+bun run github:clean-authors -- --repo owner/repo --canonical you@example.com --execute
 ```
 
-## Testing a single script
+## Tests
 
 ```bash
-make test-purge-actions
-make test-purge-packages
-make test-scan-secrets
+bun run test                        # full suite with coverage
+bun test src/tests/todo.test.ts     # single file
+bun run typecheck:tests             # typecheck including test files
 ```
 
-All tests use mocked `gh` and `jq` binaries — no real GitHub calls are made.
+Service tests use fakes and temporary git repositories — no real GitHub calls are made.
 
 ## Documentation map
 

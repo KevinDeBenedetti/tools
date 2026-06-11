@@ -1,4 +1,5 @@
 import { describe, expect, test, mock } from "bun:test";
+import type { CopilotSession } from "@github/copilot-sdk";
 import { CopilotChatSession } from "./chat.session";
 import { CopilotError } from "../../shared/errors";
 import { DEFAULT_MODEL } from "../../shared/constants";
@@ -32,9 +33,12 @@ function makeFakeSession(chunks = ["Hello ", "from ", "Copilot"]) {
   return session;
 }
 
-function makeFakeSDK(session = makeFakeSession()) {
+function makeFakeSDK(session: object = makeFakeSession()) {
   return {
-    createSession: mock(async () => session),
+    // The fake session deliberately narrows the SDK's event types to plain records
+    createSession: mock(
+      async () => session as unknown as Pick<CopilotSession, "on" | "send" | "disconnect">,
+    ),
     start: mock(async () => {}),
     stop: mock(async () => {}),
   };
@@ -165,11 +169,7 @@ describe("CopilotChatSession", () => {
       }),
     };
 
-    const persistentSDK = {
-      start: mock(async () => {}),
-      stop: mock(async () => {}),
-      createSession: mock(async () => persistentSession),
-    };
+    const persistentSDK = makeFakeSDK(persistentSession);
 
     const chat = new CopilotChatSession("token", DEFAULT_MODEL, "s", persistentSDK);
     await chat.start();

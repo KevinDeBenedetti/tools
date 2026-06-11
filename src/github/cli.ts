@@ -1,3 +1,7 @@
+import { execFileSync } from "node:child_process";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import * as p from "@clack/prompts";
 import color from "picocolors";
 import { DetectBotsService } from "./bot/detect";
@@ -53,6 +57,12 @@ const COMMANDS: Record<Command, CommandDef> = {
     description: "Normalize author identities and remove Co-Authored-By trailers",
     flags: [
       {
+        description:
+          "GitHub repo (owner/repo) to clone fresh and clean (default: current directory)",
+        name: "repo",
+        type: "string",
+      },
+      {
         description: "Canonical author email to keep (others mapped to this one)",
         name: "canonical",
         type: "string",
@@ -64,8 +74,8 @@ const COMMANDS: Record<Command, CommandDef> = {
         type: "boolean",
       },
       {
-        description: "Preview changes without rewriting history",
-        name: "dryRun",
+        description: "Actually rewrite history (default is a dry-run preview)",
+        name: "execute",
         type: "boolean",
       },
     ],
@@ -130,8 +140,8 @@ const COMMANDS: Record<Command, CommandDef> = {
         type: "string",
       },
       {
-        description: "Preview without deleting",
-        name: "dryRun",
+        description: "Actually delete (default is a dry-run preview)",
+        name: "execute",
         type: "boolean",
       },
       {
@@ -175,8 +185,8 @@ const COMMANDS: Record<Command, CommandDef> = {
         type: "string",
       },
       {
-        description: "Preview without deleting",
-        name: "dryRun",
+        description: "Actually delete (default is a dry-run preview)",
+        name: "execute",
         type: "boolean",
       },
     ],
@@ -207,8 +217,8 @@ const COMMANDS: Record<Command, CommandDef> = {
         type: "number",
       },
       {
-        description: "Preview without deleting",
-        name: "dryRun",
+        description: "Actually delete (default is a dry-run preview)",
+        name: "execute",
         type: "boolean",
       },
     ],
@@ -239,8 +249,8 @@ const COMMANDS: Record<Command, CommandDef> = {
         type: "number",
       },
       {
-        description: "Preview without deleting",
-        name: "dryRun",
+        description: "Actually delete (default is a dry-run preview)",
+        name: "execute",
         type: "boolean",
       },
     ],
@@ -707,8 +717,28 @@ function logPurgeResult(deleted: number, total: number, noun: string): void {
   }
 }
 
+// Destructive commands preview by default; --execute turns the preview off.
+function withExecuteSemantics(options: Record<string, unknown>): Record<string, unknown> {
+  const dryRun = options["execute"] !== true;
+  if (dryRun) {
+    log.info("Dry run — pass --execute to actually delete.");
+  }
+  return { ...options, dryRun };
+}
+
+function resolveCleanAuthorsRepoPath(options: Record<string, unknown>): string {
+  const repo = options["repo"] as string | undefined;
+  if (!repo) {
+    return process.cwd();
+  }
+  const repoPath = join(mkdtempSync(join(tmpdir(), "clean-authors-")), "repo");
+  log.info(`Cloning ${repo} into ${repoPath}…`);
+  execFileSync("gh", ["repo", "clone", repo, repoPath], { stdio: "inherit" });
+  return repoPath;
+}
+
 function runCleanAuthors(options: Record<string, unknown>): void {
-  const repoPath = process.cwd();
+  const repoPath = resolveCleanAuthorsRepoPath(options);
   const scanResult = scanAuthors(repoPath);
   const canonicalEmail = options["canonical"] as string | undefined;
 
@@ -738,7 +768,7 @@ function runCleanAuthors(options: Record<string, unknown>): void {
   }
 
   const removeCoAuthors = options["removeCoAuthors"] !== false;
-  const dryRun = Boolean(options["dryRun"]);
+  const dryRun = options["execute"] !== true;
   const rules: RewriteRule[] = scanResult.authors
     .filter((a) => a.email.toLowerCase() !== canonical.email.toLowerCase())
     .map((a) => ({
@@ -750,7 +780,7 @@ function runCleanAuthors(options: Record<string, unknown>): void {
 
   if (dryRun) {
     printRewritePlan(rules, scanResult.coAuthors, removeCoAuthors);
-    log.info("Dry run — no changes made.");
+    log.info("Dry run — no changes made. Pass --execute to rewrite history.");
     return;
   }
 
@@ -764,7 +794,16 @@ function runCleanAuthors(options: Record<string, unknown>): void {
     log.success("Removed Co-Authored-By trailers.");
   }
   if (result.appliedRules > 0 || result.removedCoAuthors) {
-    log.warn("Force-push required: git push --force-with-lease");
+    if (options["repo"]) {
+      log.info(`Rewritten clone: ${repoPath}`);
+      log.warn(
+        "Verify the result, then re-add the remote (git filter-repo removes it) and force-push:",
+      );
+      log.step(`git remote add origin https://github.com/${String(options["repo"])}.git`);
+      log.step("git push --force-with-lease origin HEAD");
+    } else {
+      log.warn("Force-push required: git push --force-with-lease");
+    }
   } else {
     log.info("Nothing to rewrite.");
   }
@@ -784,22 +823,22 @@ async function runCommand(command: Command, options: Record<string, unknown>): P
       break;
     }
     case "purge-actions": {
-      const result = await new PurgeActionsService(options).purge();
+      const result = await new PurgeActionsService(withExecuteSemantics(options)).purge();
       logPurgeResult(result.deleted, result.total, "workflow runs");
       break;
     }
     case "purge-packages": {
-      const result = await new PurgePackagesService(options).purge();
+      const result = await new PurgePackagesService(withExecuteSemantics(options)).purge();
       logPurgeResult(result.deleted, result.deleted, "package versions");
       break;
     }
     case "purge-release": {
-      const result = await new PurgeReleaseService(options).purge();
+      const result = await new PurgeReleaseService(withExecuteSemantics(options)).purge();
       logPurgeResult(result.deleted, result.total, "releases");
       break;
     }
     case "purge-tags": {
-      const result = await new PurgeTagsService(options).purge();
+      const result = await new PurgeTagsService(withExecuteSemantics(options)).purge();
       logPurgeResult(result.deleted, result.total, "tags");
       break;
     }

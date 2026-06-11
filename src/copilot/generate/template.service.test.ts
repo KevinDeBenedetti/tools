@@ -26,8 +26,9 @@ function fakeGitHub(
     createReview: mock(async () => {}),
     getPRFiles: mock(async () => []),
     getPRDiff: mock(async () => diff),
-    getFileContent: mock(async (_owner, _repo, path) => {
-      if (path in templateContent) return templateContent[path];
+    getFileContent: mock(async (_owner: string, _repo: string, path: string) => {
+      const content = templateContent[path];
+      if (content !== undefined) return content;
       throw new Error(`Not found: ${path}`);
     }),
   };

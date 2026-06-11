@@ -58,8 +58,8 @@ describe("ResumeTool", () => {
     const result = await new ResumeTool().run(makeCtx({ copilot }));
 
     expect(result.success).toBe(true);
-    expect(result.outputs?.sessionId).toBe("pr-7");
-    expect(result.outputs?.response).toBe("All good.");
+    expect(result.outputs?.["sessionId"]).toBe("pr-7");
+    expect(result.outputs?.["response"]).toBe("All good.");
     expect(result.summary).toContain("pr-7");
   });
 
@@ -69,7 +69,7 @@ describe("ResumeTool", () => {
       makeCtx({ copilot, options: { prompt: "Follow up.", sessionId: "my-session" } }),
     );
 
-    expect(result.outputs?.sessionId).toBe("my-session");
+    expect(result.outputs?.["sessionId"]).toBe("my-session");
     expect(copilot.resumeAndComplete).toHaveBeenCalledWith(
       "my-session",
       expect.any(String),
@@ -83,7 +83,7 @@ describe("ResumeTool", () => {
       makeCtx({ copilot, options: { prompt: "Hi." }, prNumber: undefined }),
     );
 
-    expect(result.outputs?.sessionId).toBe("pr-session");
+    expect(result.outputs?.["sessionId"]).toBe("pr-session");
   });
 
   test("passes focus through to resumeAndComplete system prompt", async () => {

@@ -21,6 +21,9 @@ const DEFAULT_BOT_PATTERNS = [
   "vercel",
   "semantic-release-bot",
   "release-please",
+  "copilot",
+  "claude",
+  "anthropic",
   "[bot]",
 ];
 

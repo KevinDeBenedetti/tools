@@ -8,12 +8,14 @@ import { formatError } from "../shared";
 const DEFAULT_SECRET_PATTERNS = [
   { expression: "sk-[A-Za-z0-9_-]{16,}", name: "OpenAI-style key" },
   {
-    expression: "AWS_SECRET_ACCESS_KEY\\s*=\\s*[\"']?[A-Za-z0-9/+=]{40}",
+    // POSIX classes: git grep -E does not portably support \s
+    expression: "AWS_SECRET_ACCESS_KEY[[:space:]]*=[[:space:]]*[\"']?[A-Za-z0-9/+=]{40}",
     name: "AWS secret access key",
   },
   { expression: "gh[pousr]_[A-Za-z0-9]{20,}", name: "GitHub token" },
   {
-    expression: "-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----",
+    // Plain group: POSIX ERE (git grep -E) has no non-capturing (?:...) syntax
+    expression: "-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----",
     name: "Private key",
   },
 ];
@@ -127,7 +129,15 @@ export class ScanSecretsService {
     const matches: SecretMatch[] = [];
 
     for (const pattern of this.getPatterns()) {
-      const output = this.runGitSearch(repoPath, ["grep", "-nE", pattern.expression, "--", "."]);
+      // -e protects patterns starting with a dash (e.g. "-----BEGIN ... KEY-----")
+      const output = this.runGitSearch(repoPath, [
+        "grep",
+        "-nE",
+        "-e",
+        pattern.expression,
+        "--",
+        ".",
+      ]);
       matches.push(...this.parseMatches(output, pattern.name));
     }
 
@@ -138,10 +148,11 @@ export class ScanSecretsService {
     const matches: SecretMatch[] = [];
 
     for (const pattern of this.getPatterns()) {
+      // -G already treats its argument as a regex; --pickaxe-regex only
+      // applies to -S and git rejects combining it with -G
       const output = this.runGitSearch(repoPath, [
         "log",
         "--all",
-        "--pickaxe-regex",
         `-G${pattern.expression}`,
         "--format=%H",
       ]);

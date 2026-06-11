@@ -30,8 +30,8 @@ stages = ["pre-commit"]
 
 [[repos.hooks]]
 id = "lint"
-name = "Lint (oxlint)"
-entry = "bun run lint"
+name = "Lint (oxlint, auto-fix)"
+entry = "bun run lint:fix"
 language = "system"
 pass_filenames = false
 stages = ["pre-commit"]
@@ -41,6 +41,15 @@ id = "typecheck"
 name = "TypeScript typecheck"
 entry = "bun"
 args = ["run", "typecheck"]
+language = "system"
+pass_filenames = false
+stages = ["pre-push"]
+
+[[repos.hooks]]
+id = "typecheck-tests"
+name = "TypeScript typecheck (tests)"
+entry = "bun"
+args = ["run", "typecheck:tests"]
 language = "system"
 pass_filenames = false
 stages = ["pre-push"]

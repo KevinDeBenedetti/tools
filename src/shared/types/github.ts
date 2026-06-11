@@ -43,7 +43,7 @@ export interface BotDetectionResult {
 
 export const PurgeActionsOptionsSchema = z.object({
   batchSize: z.coerce.number().int().min(1).max(100).default(50),
-  dryRun: z.boolean().default(false),
+  dryRun: z.boolean().default(true).describe("Preview only; set false to actually delete"),
   keepLatest: z.coerce
     .number()
     .int()
@@ -68,7 +68,7 @@ export interface WorkflowRun {
 }
 
 export const PurgePackagesOptionsSchema = z.object({
-  dryRun: z.boolean().default(false),
+  dryRun: z.boolean().default(true).describe("Preview only; set false to actually delete"),
   keepLatest: z.coerce.number().int().min(0).default(0),
   olderThan: z.string().optional(),
   packageName: z.string().describe("Name of the package to purge"),
@@ -89,7 +89,7 @@ export interface PackageVersion {
 }
 
 export const PurgeReleaseOptionsSchema = z.object({
-  dryRun: z.boolean().default(false),
+  dryRun: z.boolean().default(true).describe("Preview only; set false to actually delete"),
   keepLatest: z.coerce.number().int().min(0).default(0),
   pattern: z.string().optional().describe("Delete releases matching this glob pattern"),
   repo: z.string().describe("GitHub repository in owner/repo format"),
@@ -109,7 +109,7 @@ export interface Release {
 }
 
 export const PurgeTagsOptionsSchema = z.object({
-  dryRun: z.boolean().default(false),
+  dryRun: z.boolean().default(true).describe("Preview only; set false to actually delete"),
   exclude: z.string().optional().describe("Exclude tags matching this glob pattern"),
   keepLatest: z.coerce.number().int().min(0).default(0),
   pattern: z.string().optional().describe("Delete tags matching this glob pattern"),

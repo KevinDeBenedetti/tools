@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(kubectl get *)",
+      "Bash(kubectl logs *)",
+      "Bash(kubectl describe *)",
+      "Bash(kubectl rollout status *)",
+      "Bash(bun run test)",
+      "Bash(bun run typecheck)",
+      "Bash(bun run typecheck:tests)",
+      "Bash(bun run lint)",
+      "Bash(bun run format:check)",
+      "Bash(bun test *)",
+      "Bash(helm template *)",
+      "Bash(gh secret list)",
+      "Bash(gh variable list)"
+    ]
+  }
+}

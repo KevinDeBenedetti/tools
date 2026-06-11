@@ -71,7 +71,9 @@ export class PurgeTagsService {
     return filtered.filter(
       (tag) =>
         matchesPattern(tag.name, this.options.pattern) &&
-        !matchesPattern(tag.name, this.options.exclude),
+        // matchesPattern treats an undefined pattern as "matches all" — only
+        // apply the negation when an exclude pattern was actually provided
+        !(this.options.exclude !== undefined && matchesPattern(tag.name, this.options.exclude)),
     );
   }
 }
