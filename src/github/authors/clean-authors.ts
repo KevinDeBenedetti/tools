@@ -214,6 +214,13 @@ function runFilterBranch(repoPath: string, rules: RewriteRule[], removeCoAuthors
       throw new Error("git filter-branch --msg-filter failed");
     }
   }
+
+  // filter-branch keeps pre-rewrite backups under refs/original/, which would
+  // make the old identities reappear in any --all scan — drop them
+  const backupRefs = git(["for-each-ref", "--format=%(refname)", "refs/original/"], repoPath);
+  for (const ref of backupRefs.split("\n").filter(Boolean)) {
+    git(["update-ref", "-d", ref], repoPath);
+  }
 }
 
 export function executeClean(

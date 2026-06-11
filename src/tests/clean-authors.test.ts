@@ -127,6 +127,8 @@ describe("executeClean", () => {
     expect(result).toEqual({ appliedRules: 0, method: "dry-run", removedCoAuthors: false });
   });
 
+  // 60s timeout: without git-filter-repo installed (e.g. CI), executeClean
+  // falls back to the much slower two-pass git filter-branch
   test("rewrites author identities and strips Co-Authored-By trailers", () => {
     commit(repoPath, "Kevin", "kevin@example.com", "feat: initial");
     commit(repoPath, "dependabot[bot]", "dependabot@github.com", "chore: bump");
@@ -144,5 +146,5 @@ describe("executeClean", () => {
     expect(after.authors).toEqual([{ commitCount: 3, email: "kevin@example.com", name: "Kevin" }]);
     expect(after.coAuthors).toEqual([]);
     expect(git(repoPath, ["log", "--format=%s"])).toContain("chore: bump");
-  });
+  }, 60_000);
 });
