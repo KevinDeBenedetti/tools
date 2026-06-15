@@ -22,6 +22,8 @@ export interface RunResult {
 export interface ModelBenchmarkResult {
   modelId: string;
   label: string;
+  /** Whether cost figures are based on real provider pricing */
+  pricingKnown: boolean;
   runs: RunResult[];
   stats: BenchmarkStats;
 }
@@ -148,6 +150,7 @@ export async function benchmarkModel(
   return {
     label: model.label,
     modelId: model.id,
+    pricingKnown: model.pricingKnown,
     runs,
     stats: {
       inputTokens,

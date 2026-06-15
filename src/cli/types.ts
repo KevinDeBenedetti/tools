@@ -16,6 +16,8 @@ export interface FlagSpec {
   required?: boolean;
   /** Environment variable used as fallback when the flag is not passed */
   env?: string;
+  /** Optional validator for interactive input; return an error string to reject, undefined to accept */
+  validate?: (value: unknown) => string | undefined;
 }
 
 export interface CommandSpec {

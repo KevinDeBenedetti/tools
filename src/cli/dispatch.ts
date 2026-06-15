@@ -1,7 +1,9 @@
 import color from "picocolors";
+import { completionProgramName, generateZshCompletion } from "./completion";
 import { formatCommandHelp, formatGeneralHelp, formatGroupHelp } from "./help";
 import { runGroupInteractive, runRootInteractive } from "./interactive";
 import { parseArgs, resolveOptions } from "./parse";
+import { nearest } from "./suggest";
 import type { CommandGroup, CommandSpec } from "./types";
 
 export interface RunCliOptions {
@@ -58,6 +60,24 @@ export async function runCli(argv: string[], opts: RunCliOptions): Promise<void>
   const binName = opts.binName ?? "bun run tools";
 
   const parsed = parseArgs(argv);
+
+  // `completion zsh` is a meta-command on the root CLI: it needs the full group
+  // tree, so it's handled here rather than as a regular command.
+  if (defaultGroup === undefined && parsed.positionals[0] === "completion") {
+    const shell = parsed.positionals[1] ?? "zsh";
+    if (shell !== "zsh") {
+      console.error(color.red(`Unsupported shell: ${shell} (only zsh is supported)`));
+      process.exitCode = 1;
+      return;
+    }
+    const name =
+      typeof parsed.options["name"] === "string"
+        ? parsed.options["name"]
+        : completionProgramName(binName);
+    console.log(generateZshCompletion(groups, name));
+    return;
+  }
+
   const { group, command, unknown } = resolve(groups, parsed.positionals, defaultGroup);
 
   // Everything the user types before a command name
@@ -66,6 +86,11 @@ export async function runCli(argv: string[], opts: RunCliOptions): Promise<void>
 
   if (unknown !== undefined) {
     console.error(color.red(`Error: unknown command: ${unknown}`));
+    const candidates = group ? group.commands.map((c) => c.name) : groups.map((g) => g.name);
+    const guess = nearest(unknown, candidates);
+    if (guess) {
+      console.error(color.dim(`Did you mean '${guess}'?`));
+    }
     console.log(group ? formatGroupHelp(group, cmdPrefix) : formatGeneralHelp(groups, binName));
     process.exitCode = 1;
     return;

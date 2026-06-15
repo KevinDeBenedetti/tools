@@ -1,10 +1,9 @@
 import * as p from "@clack/prompts";
-import OpenAI from "openai";
 import color from "picocolors";
 import { log } from "../shared/ui";
 import { benchmarkModel } from "./benchmark";
-import { loadConfig } from "./config";
-import { DEFAULT_MODEL_IDS, MODELS } from "./models";
+import { createClient } from "./config";
+import { fetchModels, getModel, type ModelDef } from "./models";
 import { createSpinner, fmtMs, printResults } from "./reporter";
 
 export const DEFAULT_PROMPT =
@@ -21,18 +20,27 @@ export interface BenchmarkRunOptions {
 // ── Core runner ────────────────────────────────────────────────────────────────
 
 export async function runBenchmark(opts: BenchmarkRunOptions): Promise<void> {
-  const benchmarkConfig = loadConfig();
-
-  if (!benchmarkConfig.apiKey) {
+  const client = await createClient();
+  if (!client) {
     log.error("OPENAI_API_KEY is not set. Export it or add it to a .env file.");
     process.exitCode = 1;
     return;
   }
 
-  const client = new OpenAI({
-    apiKey: benchmarkConfig.apiKey,
-    baseURL: benchmarkConfig.apiUrl,
-  });
+  if (opts.models.length === 0) {
+    log.error("No models selected. Pass --models <id,id> or use the interactive menu.");
+    process.exitCode = 1;
+    return;
+  }
+
+  // Pull pricing/labels from the API; benchmarking still works if this fails.
+  let available: ModelDef[] = [];
+  try {
+    available = await fetchModels(client);
+  } catch (err) {
+    log.warn(`Could not fetch model metadata: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   const config = {
     maxTokens: opts.maxTokens,
     prompt: opts.prompt,
@@ -51,12 +59,14 @@ export async function runBenchmark(opts: BenchmarkRunOptions): Promise<void> {
 
   const results = [];
   for (const modelId of opts.models) {
-    const modelDef =
-      benchmarkConfig.models.find((m) => m.id === modelId) ?? MODELS.find((m) => m.id === modelId);
-    if (!modelDef) {
-      log.error(`Unknown model: ${modelId}. Check your benchmark.config.json.`);
-      continue;
-    }
+    // Unknown to /models? Still benchmark it, just without pricing.
+    const modelDef: ModelDef = getModel(modelId, available) ?? {
+      id: modelId,
+      inputPricePer1M: 0,
+      label: modelId,
+      outputPricePer1M: 0,
+      pricingKnown: false,
+    };
     const modelSpinner = createSpinner(`Running benchmark for ${color.bold(modelDef.label)}`);
     let successCount = 0;
 
@@ -85,16 +95,41 @@ export async function runBenchmark(opts: BenchmarkRunOptions): Promise<void> {
 export async function runInteractive(): Promise<void> {
   p.intro(color.bgBlue(color.white(" OpenAI Benchmark ")));
 
-  const modelOptions = MODELS.map((m) => ({
-    hint: `$${m.inputPricePer1M}/$${m.outputPricePer1M} per 1M tokens`,
-    label: m.label,
+  const client = await createClient();
+  if (!client) {
+    p.cancel("OPENAI_API_KEY is not set. Export it or add it to a .env file.");
+    return;
+  }
+
+  const spinner = p.spinner();
+  spinner.start("Fetching models from the API…");
+  let available: ModelDef[];
+  try {
+    available = await fetchModels(client);
+    spinner.stop(`Found ${available.length} models`);
+  } catch (err) {
+    spinner.stop("Failed to fetch models");
+    p.cancel(`Could not list models: ${err instanceof Error ? err.message : String(err)}`);
+    return;
+  }
+
+  if (available.length === 0) {
+    p.cancel("The API returned no models.");
+    return;
+  }
+
+  const modelOptions = available.map((m) => ({
+    hint: m.pricingKnown
+      ? `$${m.inputPricePer1M.toFixed(2)}/$${m.outputPricePer1M.toFixed(2)} per 1M`
+      : "pricing n/a",
+    label: m.id,
     value: m.id,
   }));
 
   const selectedModels = await p.multiselect<string>({
-    initialValues: DEFAULT_MODEL_IDS,
-    message: "Select models to benchmark",
+    message: "Select models to benchmark (space to toggle)",
     options: modelOptions,
+    required: true,
   });
   if (p.isCancel(selectedModels)) {
     p.cancel("Cancelled.");

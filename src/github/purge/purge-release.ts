@@ -17,6 +17,16 @@ export class PurgeReleaseService {
     this.options = PurgeReleaseOptionsSchema.parse(options);
   }
 
+  /** Resolve which releases would be deleted, without touching anything. */
+  async plan(): Promise<string[]> {
+    await ensureGhAuth();
+    return this.filterReleases(await this.getAllReleases()).map((release) =>
+      release.name && release.name !== release.tagName
+        ? `${release.tagName} — ${release.name}`
+        : release.tagName,
+    );
+  }
+
   async purge(): Promise<{ deleted: number; total: number }> {
     await ensureGhAuth();
 

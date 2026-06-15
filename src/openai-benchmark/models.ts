@@ -1,24 +1,57 @@
+import type OpenAI from "openai";
+
 export interface ModelDef {
   id: string;
   label: string;
-  /** USD per 1M input tokens */
+  /** USD per 1M input tokens (0 when the provider does not expose pricing) */
   inputPricePer1M: number;
-  /** USD per 1M output tokens */
+  /** USD per 1M output tokens (0 when the provider does not expose pricing) */
   outputPricePer1M: number;
+  /** Whether the provider returned usable pricing for this model */
+  pricingKnown: boolean;
 }
 
-export const MODELS: ModelDef[] = [
-  { id: "gpt-4o", label: "GPT-4o", inputPricePer1M: 2.5, outputPricePer1M: 10.0 },
-  { id: "gpt-4o-mini", label: "GPT-4o mini", inputPricePer1M: 0.15, outputPricePer1M: 0.6 },
-  { id: "gpt-4.1", label: "GPT-4.1", inputPricePer1M: 2.0, outputPricePer1M: 8.0 },
-  { id: "gpt-4.1-mini", label: "GPT-4.1 mini", inputPricePer1M: 0.4, outputPricePer1M: 1.6 },
-  { id: "gpt-4.1-nano", label: "GPT-4.1 nano", inputPricePer1M: 0.1, outputPricePer1M: 0.4 },
-  { id: "o4-mini", label: "o4-mini", inputPricePer1M: 1.1, outputPricePer1M: 4.4 },
-];
+// OpenRouter (and some other OpenAI-compatible providers) include per-token
+// pricing in their /models response. Plain OpenAI does not — pricing is then
+// reported as unknown rather than guessed.
+interface ApiModel {
+  id: string;
+  name?: string;
+  pricing?: { prompt?: string | number; completion?: string | number };
+}
 
-export const DEFAULT_MODEL_IDS = ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"];
+function toNumber(value: unknown): number | undefined {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : undefined;
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
 
-export function getModel(id: string, from: ModelDef[] = MODELS): ModelDef | undefined {
+function toModelDef(model: ApiModel): ModelDef {
+  const prompt = toNumber(model.pricing?.prompt);
+  const completion = toNumber(model.pricing?.completion);
+  const pricingKnown = prompt !== undefined && completion !== undefined;
+  return {
+    id: model.id,
+    inputPricePer1M: (prompt ?? 0) * 1_000_000,
+    label: model.name ?? model.id,
+    outputPricePer1M: (completion ?? 0) * 1_000_000,
+    pricingKnown,
+  };
+}
+
+/** Fetch the provider's available models from the API, sorted by id. */
+export async function fetchModels(client: OpenAI): Promise<ModelDef[]> {
+  const page = await client.models.list();
+  const models = (page.data as unknown as ApiModel[]).map(toModelDef);
+  return models.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+export function getModel(id: string, from: ModelDef[]): ModelDef | undefined {
   return from.find((m) => m.id === id);
 }
 

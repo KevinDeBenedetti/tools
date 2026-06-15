@@ -57,6 +57,7 @@ gh auth status
 ```bash
 bun run tools          # unified CLI — interactive menu on a TTY
 bun run tools --help   # list every group and command
+bun run tools completion zsh > ~/.zfunc/_tools  # generate zsh completion
 bun run github         # github group (interactive when no command given)
 bun run test           # run the full test suite
 bun run typecheck      # strict TypeScript check
@@ -93,7 +94,7 @@ Run `bun run github -- <command> --help` for command-specific flags, or `bun run
 
 ## Safety guidance
 
-Destructive commands (`purge-*`, `clean-authors`) **default to a dry-run preview**. Nothing is deleted or rewritten until you pass `--execute`.
+Destructive commands (`purge-*`, `clean-authors`) **default to a dry-run preview**. Nothing is deleted or rewritten until you pass `--execute`. The dry run lists exactly what would be affected, and in an interactive terminal `--execute` adds a final red confirmation before deleting (see [Interactive CLI — Destructive previews](./cli/interactive.md#destructive-previews)).
 
 ```bash
 # See what would be deleted — nothing is removed
@@ -133,6 +134,7 @@ Service tests use fakes and temporary git repositories — no real GitHub calls 
 
 ## Documentation map
 
+- [Interactive CLI](./cli/interactive.md) — menu, guided wizard, shell completion, remembered values
 - [Makefile Fragments](./makefiles/makefile-fragments.md) — Vue, Nuxt, FastAPI fragments
 - [Docker Templates](./docker/docker-templates.md) — stack Dockerfiles
 - [GitHub — Purge](./github/purge.md) — purge actions, packages, releases, tags

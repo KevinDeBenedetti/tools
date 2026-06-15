@@ -1,16 +1,15 @@
 import type { CommandGroup, CommandSpec } from "../cli/types";
-import { table } from "../shared/ui";
-import { DEFAULT_MODEL_IDS, MODELS } from "./models";
+import { log, table } from "../shared/ui";
 
 // OpenAI client and config load lazily inside run() so listing commands or
-// printing help never requires an API key or a .env file.
+// printing help never requires an API key or a .env file. Models (and pricing,
+// when the provider exposes it) come from the API's /models endpoint.
 
 const run: CommandSpec = {
   description: "Benchmark models on latency, TTFT, throughput, and cost",
   flags: [
     {
-      default: DEFAULT_MODEL_IDS,
-      description: "Comma-separated model IDs",
+      description: "Comma-separated model IDs (omit to pick interactively)",
       name: "models",
       type: "string[]",
     },
@@ -33,7 +32,7 @@ const run: CommandSpec = {
     const { DEFAULT_PROMPT, runBenchmark } = await import("./run");
     await runBenchmark({
       maxTokens: options["maxTokens"] as number,
-      models: options["models"] as string[],
+      models: (options["models"] as string[] | undefined) ?? [],
       prompt: (options["prompt"] as string | undefined) ?? DEFAULT_PROMPT,
       runs: options["runs"] as number,
       stream: options["stream"] !== false,
@@ -42,34 +41,41 @@ const run: CommandSpec = {
 };
 
 const models: CommandSpec = {
-  description: "List available models with pricing (built-in + benchmark.config.json)",
+  description: "List available models from the API (with pricing when exposed)",
   flags: [],
   name: "models",
   async run() {
-    const { loadConfig } = await import("./config");
-    let configured: typeof MODELS = [];
-    try {
-      configured = loadConfig().models;
-    } catch {
-      // No .env / config file — built-in models only
+    const { createClient } = await import("./config");
+    const client = await createClient();
+    if (!client) {
+      log.error("OPENAI_API_KEY is not set. Export it or add it to a .env file.");
+      process.exitCode = 1;
+      return;
     }
-    const all = [...configured, ...MODELS.filter((m) => !configured.some((c) => c.id === m.id))];
+
+    const { fetchModels } = await import("./models");
+    const all = await fetchModels(client);
+    if (all.length === 0) {
+      log.info("The API returned no models.");
+      return;
+    }
+
     table(
       [
         { label: "Model" },
         { label: "Label" },
         { align: "right", label: "$/1M in" },
         { align: "right", label: "$/1M out" },
-        { label: "Default" },
       ],
       all.map((m) => [
         m.id,
         m.label,
-        String(m.inputPricePer1M),
-        String(m.outputPricePer1M),
-        DEFAULT_MODEL_IDS.includes(m.id) ? "✓" : "",
+        m.pricingKnown ? m.inputPricePer1M.toFixed(2) : "—",
+        m.pricingKnown ? m.outputPricePer1M.toFixed(2) : "—",
       ]),
     );
+    log.blank();
+    log.info(`${all.length} models. Benchmark with: bun run benchmark --models <id,id>`);
   },
 };
 

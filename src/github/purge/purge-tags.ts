@@ -8,6 +8,12 @@ export class PurgeTagsService {
     this.options = PurgeTagsOptionsSchema.parse(options);
   }
 
+  /** Resolve which tags would be deleted, without touching anything. */
+  async plan(): Promise<string[]> {
+    await ensureGhAuth();
+    return this.filterTags(await this.getAllTags()).map((tag) => tag.name);
+  }
+
   async purge(): Promise<{ deleted: number; total: number }> {
     await ensureGhAuth();
 

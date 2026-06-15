@@ -1,3 +1,4 @@
+import * as p from "@clack/prompts";
 import color from "picocolors";
 
 // ── ANSI-aware string width ────────────────────────────────────────────────────
@@ -74,4 +75,15 @@ export function table(columns: Column[], rows: string[][]): void {
 
 export function divider(): void {
   console.log(`  ${color.dim("─".repeat(52))}`);
+}
+
+// ── Destructive confirmation ─────────────────────────────────────────────────────
+
+/**
+ * Red confirmation gate for irreversible actions. Defaults to "no" and treats a
+ * cancel (Ctrl+C) as a refusal, so an accidental keypress never deletes anything.
+ */
+export async function confirmDestructive(message: string): Promise<boolean> {
+  const answer = await p.confirm({ initialValue: false, message: color.red(message) });
+  return p.isCancel(answer) ? false : answer;
 }

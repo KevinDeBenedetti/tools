@@ -87,6 +87,15 @@ describe("PurgeTagsService", () => {
     expect(result).toEqual({ deleted: 2, total: 2 });
     expect(deleteCalls().flat().join(" ")).not.toContain("rc1");
   });
+
+  test("plan() lists candidates without deleting", async () => {
+    withTags(["v0.1.0", "v0.2.0", "v1.0.0"]);
+
+    const items = await new PurgeTagsService({ pattern: "v0.*", repo: "octo/tools" }).plan();
+
+    expect(items).toEqual(["v0.1.0", "v0.2.0"]);
+    expect(deleteCalls()).toHaveLength(0);
+  });
 });
 
 describe("PurgeReleaseService", () => {
@@ -130,6 +139,15 @@ describe("PurgeReleaseService", () => {
 
     expect(result).toEqual({ deleted: 1, total: 1 });
     expect(deleteCalls()[0]).toContain("v1.0.0");
+  });
+
+  test("plan() lists candidates without deleting", async () => {
+    withReleases([{ name: "First", tagName: "v1.0.0" }, { tagName: "v1.1.0" }]);
+
+    const items = await new PurgeReleaseService({ pattern: "v1.*", repo: "octo/tools" }).plan();
+
+    expect(items).toEqual(["v1.0.0 — First", "v1.1.0"]);
+    expect(deleteCalls()).toHaveLength(0);
   });
 });
 
@@ -188,6 +206,15 @@ describe("PurgeActionsService", () => {
 
     expect(result).toEqual({ deleted: 1, total: 1 });
   });
+
+  test("plan() lists candidates without deleting", async () => {
+    withRuns([oldRun, recentRun]);
+
+    const items = await new PurgeActionsService({ olderThan: "30d", repo: "octo/tools" }).plan();
+
+    expect(items).toEqual(["ci (1) — completed/success"]);
+    expect(deleteCalls()).toHaveLength(0);
+  });
 });
 
 describe("PurgePackagesService", () => {
@@ -245,5 +272,18 @@ describe("PurgePackagesService", () => {
     expect(deletedUrls).toContain("/versions/20");
     expect(deletedUrls).toContain("/versions/10");
     expect(deletedUrls).not.toContain("/versions/30");
+  });
+
+  test("plan() lists candidates without deleting", async () => {
+    withVersions(versions);
+
+    const items = await new PurgePackagesService({
+      keepLatest: 1,
+      packageName: "tools",
+      repo: "octo/tools",
+    }).plan();
+
+    expect(items).toEqual(["1.1.0 (id 20)", "1.0.0 (id 10)"]);
+    expect(deleteCalls()).toHaveLength(0);
   });
 });

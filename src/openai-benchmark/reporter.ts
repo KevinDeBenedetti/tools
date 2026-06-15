@@ -88,7 +88,9 @@ export function printResults(results: ModelBenchmarkResult[]): void {
     const p95 = s.totalMs.p95 > 0 ? fmtMs(s.totalMs.p95) : color.dim("—");
     const tps = s.tokensPerSec.mean > 0 ? fmt(s.tokensPerSec.mean, 1) : color.dim("—");
     const tokens = fmt(s.outputTokens.mean, 0);
-    const cost = fmtCost(s.totalCostUsd / Math.max(r.runs.length, 1));
+    const cost = r.pricingKnown
+      ? fmtCost(s.totalCostUsd / Math.max(r.runs.length, 1))
+      : color.dim("—");
     const ok =
       s.successRate === 1 ? color.green("100%") : color.red(`${fmt(s.successRate * 100, 0)}%`);
 
@@ -105,11 +107,6 @@ export function printResults(results: ModelBenchmarkResult[]): void {
       (a, b) => (a.stats.totalMs.mean < b.stats.totalMs.mean ? a : b),
       successful[0]!,
     );
-    const cheapest = successful.reduce(
-      (a, b) =>
-        a.stats.totalCostUsd / a.runs.length < b.stats.totalCostUsd / b.runs.length ? a : b,
-      successful[0]!,
-    );
     const highestTps = successful.reduce(
       (a, b) => (a.stats.tokensPerSec.mean > b.stats.tokensPerSec.mean ? a : b),
       successful[0]!,
@@ -121,17 +118,31 @@ export function printResults(results: ModelBenchmarkResult[]): void {
       `  ${color.dim("Fastest".padEnd(LW))} ${color.bold(fastest.label)}  ` +
         color.dim(fmtMs(fastest.stats.totalMs.mean) + " avg"),
     );
-    console.log(
-      `  ${color.dim("Cheapest".padEnd(LW))} ${color.bold(cheapest.label)}  ` +
-        color.dim(fmtCost(cheapest.stats.totalCostUsd / cheapest.runs.length) + "/run"),
-    );
+
+    const priced = successful.filter((r) => r.pricingKnown);
+    if (priced.length > 0) {
+      const cheapest = priced.reduce(
+        (a, b) =>
+          a.stats.totalCostUsd / a.runs.length < b.stats.totalCostUsd / b.runs.length ? a : b,
+        priced[0]!,
+      );
+      console.log(
+        `  ${color.dim("Cheapest".padEnd(LW))} ${color.bold(cheapest.label)}  ` +
+          color.dim(fmtCost(cheapest.stats.totalCostUsd / cheapest.runs.length) + "/run"),
+      );
+    }
+
     console.log(
       `  ${color.dim("Throughput".padEnd(LW))} ${color.bold(highestTps.label)}  ` +
         color.dim(fmt(highestTps.stats.tokensPerSec.mean, 1) + " tok/s"),
     );
   }
 
-  const totalCost = results.reduce((s, r) => s + r.stats.totalCostUsd, 0);
-  console.log(`\n  ${color.dim("Total cost:")} ${color.bold(fmtCost(totalCost))}`);
+  const priced = results.filter((r) => r.pricingKnown);
+  if (priced.length > 0) {
+    const totalCost = priced.reduce((s, r) => s + r.stats.totalCostUsd, 0);
+    const suffix = priced.length < results.length ? color.dim(" (priced models only)") : "";
+    console.log(`\n  ${color.dim("Total cost:")} ${color.bold(fmtCost(totalCost))}${suffix}`);
+  }
   console.log();
 }

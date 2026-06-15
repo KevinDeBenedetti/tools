@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { CommandGroup, CommandSpec } from "../cli/types";
 
 // ── @clack/prompts mock ─────────────────────────────────────────────────────────
@@ -9,9 +12,12 @@ import type { CommandGroup, CommandSpec } from "../cli/types";
 
 const selectQueue: string[] = [];
 const confirmQueue: boolean[] = [];
-const textQueue: string[] = [];
+const textQueue: (string | typeof CANCEL)[] = [];
+const multiselectQueue: (string[] | typeof CANCEL)[] = [];
 let introCount = 0;
 let outroCount = 0;
+
+const CANCEL = Symbol("cancel");
 
 mock.module("@clack/prompts", () => ({
   cancel: () => {},
@@ -20,6 +26,7 @@ mock.module("@clack/prompts", () => ({
     introCount++;
   },
   isCancel: (v: unknown) => typeof v === "symbol",
+  multiselect: async () => (multiselectQueue.length ? multiselectQueue.shift() : []),
   note: () => {},
   outro: () => {
     outroCount++;
@@ -27,7 +34,7 @@ mock.module("@clack/prompts", () => ({
   select: async ({ options }: { options: { label: string; value: unknown }[] }) => {
     const label = selectQueue.shift();
     if (label === "__CANCEL__") {
-      return Symbol("cancel");
+      return CANCEL;
     }
     const opt = options.find((o) => o.label === label);
     if (!opt) {
@@ -38,10 +45,34 @@ mock.module("@clack/prompts", () => ({
     return opt.value;
   },
   spinner: () => ({ start: () => {}, stop: () => {} }),
-  text: async () => (textQueue.length ? textQueue.shift() : ""),
+  // Pulls the next queued value; falls back to the prompt's initialValue (the
+  // remembered last value) when the queue is empty, and re-prompts (pulls again)
+  // if validate rejects it, mirroring clack's real re-prompt loop.
+  text: async ({
+    validate,
+    initialValue,
+  }: {
+    validate?: (v: unknown) => string | undefined;
+    initialValue?: string;
+  }) => {
+    while (true) {
+      const v = textQueue.length ? textQueue.shift()! : (initialValue ?? "");
+      if (typeof v === "symbol") {
+        return v;
+      }
+      const err = validate?.(v);
+      if (!err) {
+        return v;
+      }
+      if (!textQueue.length) {
+        throw new Error(`test text: validation rejected "${v}": ${err}`);
+      }
+    }
+  },
 }));
 
-const { runRootInteractive, runGroupInteractive } = await import("../cli/interactive");
+const { runRootInteractive, runGroupInteractive, collectOptions } =
+  await import("../cli/interactive");
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────────
 
@@ -63,16 +94,24 @@ function makeGroups(): CommandGroup[] {
   ];
 }
 
+let stateDir: string;
+
 afterEach(() => {
   calls.length = 0;
   selectQueue.length = 0;
   confirmQueue.length = 0;
   textQueue.length = 0;
+  multiselectQueue.length = 0;
+  rmSync(stateDir, { force: true, recursive: true });
+  delete process.env["TOOLS_STATE_PATH"];
 });
 
 beforeEach(() => {
   introCount = 0;
   outroCount = 0;
+  // Isolate persisted state so prompts never read the real ~/.config file.
+  stateDir = mkdtempSync(join(tmpdir(), "tools-itest-"));
+  process.env["TOOLS_STATE_PATH"] = join(stateDir, "state.json");
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -151,5 +190,88 @@ describe("custom interactive handler", () => {
     selectQueue.push("g", "custom", "← Back", "Quit");
     await runRootInteractive(groups);
     expect(calls).toEqual(["custom-interactive"]);
+  });
+});
+
+describe("collectOptions", () => {
+  const spec = (flags: CommandSpec["flags"]): CommandSpec => ({
+    description: "c",
+    flags,
+    name: "c",
+    run: () => {},
+  });
+
+  test("always prompts required flags", async () => {
+    textQueue.push("octo/repo");
+    const opts = await collectOptions(
+      spec([{ description: "repo", name: "repo", required: true, type: "string" }]),
+    );
+    expect(opts).toEqual({ repo: "octo/repo" });
+  });
+
+  test("re-prompts when a required flag is left empty", async () => {
+    textQueue.push("", "octo/repo"); // empty rejected, then accepted
+    const opts = await collectOptions(
+      spec([{ description: "repo", name: "repo", required: true, type: "string" }]),
+    );
+    expect(opts).toEqual({ repo: "octo/repo" });
+  });
+
+  test("honours a custom validate before accepting", async () => {
+    textQueue.push("bad", "good");
+    const opts = await collectOptions(
+      spec([
+        {
+          description: "name",
+          name: "name",
+          required: true,
+          type: "string",
+          validate: (v) => (v === "good" ? undefined : "nope"),
+        },
+      ]),
+    );
+    expect(opts).toEqual({ name: "good" });
+  });
+
+  test("only prompts optional flags the user picks", async () => {
+    multiselectQueue.push(["limit"]); // pick --limit, skip --tag
+    textQueue.push("5");
+    const opts = await collectOptions(
+      spec([
+        { description: "limit", name: "limit", type: "number" },
+        { description: "tag", name: "tag", type: "string" },
+      ]),
+    );
+    expect(opts).toEqual({ limit: 5 });
+  });
+
+  test("builds string[] values until an empty entry", async () => {
+    multiselectQueue.push(["pattern"]);
+    textQueue.push("a", "b", ""); // two values then finish
+    const opts = await collectOptions(
+      spec([{ description: "pattern", name: "pattern", type: "string[]" }]),
+    );
+    expect(opts).toEqual({ pattern: ["a", "b"] });
+  });
+
+  test("returns null when a required prompt is cancelled", async () => {
+    textQueue.push(CANCEL);
+    const opts = await collectOptions(
+      spec([{ description: "repo", name: "repo", required: true, type: "string" }]),
+    );
+    expect(opts).toBeNull();
+  });
+
+  test("no flags means no prompts and an empty object", async () => {
+    expect(await collectOptions(spec([]))).toEqual({});
+  });
+
+  test("prefills a flag from the remembered last value", async () => {
+    writeFileSync(process.env["TOOLS_STATE_PATH"]!, JSON.stringify({ repo: "octo/remembered" }));
+    // Empty queue → the mock falls back to the prompt's initialValue (remembered).
+    const opts = await collectOptions(
+      spec([{ description: "repo", name: "repo", required: true, type: "string" }]),
+    );
+    expect(opts).toEqual({ repo: "octo/remembered" });
   });
 });

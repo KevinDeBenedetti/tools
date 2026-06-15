@@ -26,6 +26,7 @@ export function formatGeneralHelp(groups: CommandGroup[], binName = "bun run too
     "  --interactive, -i  Launch interactive TUI",
     "",
     `Run ${color.cyan(`${binName} [group] [command] --help`)} for command-specific help.`,
+    `Run ${color.cyan(`${binName} completion zsh`)} to generate a zsh completion script.`,
   );
 
   return lines.join("\n");

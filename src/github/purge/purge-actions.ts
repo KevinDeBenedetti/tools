@@ -17,6 +17,14 @@ export class PurgeActionsService {
     this.options = PurgeActionsOptionsSchema.parse(options);
   }
 
+  /** Resolve which workflow runs would be deleted, without touching anything. */
+  async plan(): Promise<string[]> {
+    await ensureGhAuth();
+    return this.filterRuns(await this.getWorkflowRuns()).map(
+      (run) => `${run.name} (${run.id}) — ${run.status}/${run.conclusion ?? "N/A"}`,
+    );
+  }
+
   async purge(): Promise<{ deleted: number; total: number }> {
     await ensureGhAuth();
 

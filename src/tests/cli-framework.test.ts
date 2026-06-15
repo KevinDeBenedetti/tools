@@ -7,6 +7,7 @@ import {
   formatGroupHelp,
 } from "../cli/help";
 import { parseArgs, resolveOptions, toCamelCase, toKebabCase } from "../cli/parse";
+import { levenshtein, nearest } from "../cli/suggest";
 import type { CommandGroup, CommandSpec } from "../cli/types";
 
 describe("parseArgs", () => {
@@ -51,6 +52,19 @@ describe("case helpers", () => {
   test("kebab and camel round-trip", () => {
     expect(toCamelCase("keep-latest")).toBe("keepLatest");
     expect(toKebabCase("keepLatest")).toBe("keep-latest");
+  });
+});
+
+describe("suggest", () => {
+  test("levenshtein measures edit distance", () => {
+    expect(levenshtein("purge-tag", "purge-tags")).toBe(1);
+    expect(levenshtein("same", "same")).toBe(0);
+    expect(levenshtein("", "abc")).toBe(3);
+  });
+
+  test("nearest returns the closest candidate within the threshold", () => {
+    expect(nearest("purge-tag", ["purge-tags", "purge-release"])).toBe("purge-tags");
+    expect(nearest("xyzzy", ["purge-tags", "detect-bots"])).toBeUndefined();
   });
 });
 
@@ -223,6 +237,37 @@ describe("runCli", () => {
     await runCli(["alpha", "nope"], { groups: makeGroups(), isTTY: false });
     expect(process.exitCode).toBe(1);
     expect(calls).toEqual([]);
+  });
+
+  test("suggests the nearest command on a typo", async () => {
+    const errors: string[] = [];
+    const original = console.error;
+    console.error = (msg?: unknown) => {
+      errors.push(String(msg));
+    };
+    try {
+      await runCli(["beta", "sol"], { groups: makeGroups(), isTTY: false });
+    } finally {
+      console.error = original;
+    }
+    expect(errors.join("\n")).toContain("Did you mean 'solo'?");
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("completion zsh prints a compdef script for the root CLI", async () => {
+    const out: string[] = [];
+    const original = console.log;
+    console.log = (msg?: unknown) => {
+      out.push(String(msg));
+    };
+    try {
+      await runCli(["completion", "zsh"], { groups: makeGroups(), isTTY: false });
+    } finally {
+      console.log = original;
+    }
+    const script = out.join("\n");
+    expect(script).toContain("#compdef tools");
+    expect(script).toContain("'alpha:alpha group'");
   });
 
   test("run() errors are reported as a failure exit code", async () => {

@@ -21,6 +21,15 @@ export class PurgePackagesService {
     this.owner = parseRepoString(this.options.repo).owner;
   }
 
+  /** Resolve which package versions would be deleted, without touching anything. */
+  async plan(): Promise<string[]> {
+    await ensureGhAuth();
+    const sorted = this.sortByDate(await this.getPackageVersions());
+    return this.selectVersionsToDelete(sorted).map(
+      (version) => `${version.version} (id ${version.id})`,
+    );
+  }
+
   async purge(): Promise<{ deleted: number; kept: number }> {
     await ensureGhAuth();
 

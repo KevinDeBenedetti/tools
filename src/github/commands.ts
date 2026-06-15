@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as p from "@clack/prompts";
 import type { CommandGroup, CommandSpec } from "../cli/types";
-import { log, table } from "../shared/ui";
+import { confirmDestructive, log, table } from "../shared/ui";
 import {
   type CoAuthorTrailer,
   type RewriteRule,
@@ -29,13 +29,55 @@ function logPurgeResult(deleted: number, total: number, noun: string): void {
   }
 }
 
-// Destructive commands preview by default; --execute turns the preview off.
-function withExecuteSemantics(options: Record<string, unknown>): Record<string, unknown> {
-  const dryRun = options["execute"] !== true;
-  if (dryRun) {
-    log.info("Dry run — pass --execute to actually delete.");
+interface Purgeable<R> {
+  plan(): Promise<string[]>;
+  purge(): Promise<R>;
+}
+
+/**
+ * Shared flow for destructive purge commands: resolve the candidate list, show
+ * it as a table, then either stop (dry-run, the default) or — once confirmed in
+ * an interactive terminal — execute. In a non-TTY context (CI) `--execute`
+ * deletes without prompting, matching the previous behaviour.
+ */
+async function runPurge<R>(
+  options: Record<string, unknown>,
+  noun: string,
+  makeService: (opts: Record<string, unknown>) => Purgeable<R>,
+  report: (result: R) => void,
+): Promise<void> {
+  const execute = options["execute"] === true;
+  const items = await makeService({ ...options, dryRun: true }).plan();
+
+  if (items.length === 0) {
+    log.info(`No ${noun} match — nothing to delete.`);
+    return;
   }
-  return { ...options, dryRun };
+
+  log.blank();
+  table(
+    [{ label: `${noun} to delete (${items.length})` }],
+    items.map((item) => [item]),
+  );
+  log.blank();
+
+  if (!execute) {
+    log.info(`Dry run — pass --execute to delete these ${items.length} ${noun}.`);
+    return;
+  }
+
+  if (process.stdout.isTTY) {
+    const repo = String(options["repo"] ?? "");
+    const ok = await confirmDestructive(
+      `Permanently delete ${items.length} ${noun} in ${repo}? This cannot be undone.`,
+    );
+    if (!ok) {
+      log.info("Aborted — nothing deleted.");
+      return;
+    }
+  }
+
+  report(await makeService({ ...options, dryRun: false }).purge());
 }
 
 const REPO_FLAG = {
@@ -343,8 +385,12 @@ const purgeActions: CommandSpec = {
   ],
   name: "purge-actions",
   async run(options) {
-    const result = await new PurgeActionsService(withExecuteSemantics(options)).purge();
-    logPurgeResult(result.deleted, result.total, "workflow runs");
+    await runPurge(
+      options,
+      "workflow runs",
+      (opts) => new PurgeActionsService(opts),
+      (result) => logPurgeResult(result.deleted, result.total, "workflow runs"),
+    );
   },
 };
 
@@ -370,8 +416,12 @@ const purgePackages: CommandSpec = {
   ],
   name: "purge-packages",
   async run(options) {
-    const result = await new PurgePackagesService(withExecuteSemantics(options)).purge();
-    logPurgeResult(result.deleted, result.deleted, "package versions");
+    await runPurge(
+      options,
+      "package versions",
+      (opts) => new PurgePackagesService(opts),
+      (result) => logPurgeResult(result.deleted, result.deleted + result.kept, "package versions"),
+    );
   },
 };
 
@@ -391,8 +441,12 @@ const purgeRelease: CommandSpec = {
   ],
   name: "purge-release",
   async run(options) {
-    const result = await new PurgeReleaseService(withExecuteSemantics(options)).purge();
-    logPurgeResult(result.deleted, result.total, "releases");
+    await runPurge(
+      options,
+      "releases",
+      (opts) => new PurgeReleaseService(opts),
+      (result) => logPurgeResult(result.deleted, result.total, "releases"),
+    );
   },
 };
 
@@ -412,8 +466,12 @@ const purgeTags: CommandSpec = {
   ],
   name: "purge-tags",
   async run(options) {
-    const result = await new PurgeTagsService(withExecuteSemantics(options)).purge();
-    logPurgeResult(result.deleted, result.total, "tags");
+    await runPurge(
+      options,
+      "tags",
+      (opts) => new PurgeTagsService(opts),
+      (result) => logPurgeResult(result.deleted, result.total, "tags"),
+    );
   },
 };
 
