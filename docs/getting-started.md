@@ -140,6 +140,8 @@ Service tests use fakes and temporary git repositories — no real GitHub calls 
 - [GitHub — Purge](./github/purge.md) — purge actions, packages, releases, tags
 - [GitHub — Bot Detection](./github/bot.md) — detect and remove bot commits
 - [GitHub — Secrets](./github/secrets.md) — scan for secrets in history
+- [Benchmark](./benchmark/benchmark.md) — benchmark OpenAI-compatible models (latency, TTFT, throughput, cost)
+- [Todo Sync](./todo/todo.md) — bidirectional sync between TODO.yml and GitHub Issues
 - [Copilot SDK](./copilot/copilot-sdk.md) — Copilot extension SDK usage
 - [Copilot Instructions](./copilot/instructions.md) — writing Copilot instructions
 - **[Copilot Chat & Sessions](./copilot/chat-and-sessions.md)** — interactive chat, persistent sessions, session resumption
