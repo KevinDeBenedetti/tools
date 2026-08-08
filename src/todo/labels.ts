@@ -3,7 +3,8 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import yaml from "js-yaml";
+// js-yaml 5 dropped the default export from its ESM build — named only.
+import { load } from "js-yaml";
 import { createLabel, repoSlug, updateLabel } from "./github";
 import type { LabelDef, LabelsFile, TodoEntry } from "./types";
 import { priorityLabels, statusLabels, typeLabels } from "./types";
@@ -59,7 +60,7 @@ export async function syncLabels(): Promise<void> {
     return;
   }
 
-  const file = yaml.load(readFileSync(labelsPath, "utf8")) as LabelsFile;
+  const file = load(readFileSync(labelsPath, "utf8")) as LabelsFile;
   const defs = file.labels ?? [];
   console.log(`Syncing ${defs.length} labels to ${repoSlug()}…`);
 

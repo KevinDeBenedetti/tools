@@ -3,7 +3,8 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import yaml from "js-yaml";
+// js-yaml 5 dropped the default export from its ESM build — named only.
+import { dump, load } from "js-yaml";
 import type { TodoFile } from "./types";
 
 const TODO_PATH = process.env["TODO_PATH"] ?? "TODO.yml";
@@ -15,10 +16,10 @@ export function readTodo(): TodoFile {
   }
 
   const content = readFileSync(TODO_PATH, "utf8");
-  return yaml.load(content) as TodoFile;
+  return load(content) as TodoFile;
 }
 
 export function writeTodo(data: TodoFile): void {
-  const content = yaml.dump(data, { lineWidth: 120 });
+  const content = dump(data, { lineWidth: 120 });
   writeFileSync(TODO_PATH, content, "utf8");
 }
