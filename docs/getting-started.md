@@ -135,6 +135,7 @@ Service tests use fakes and temporary git repositories — no real GitHub calls 
 ## Documentation map
 
 - [Interactive CLI](./cli/interactive.md) — menu, guided wizard, shell completion, remembered values
+- [Web UI](./cli/web-ui.md) — `bun run ui`, the same commands as a local browser form
 - [Makefile Fragments](./makefiles/makefile-fragments.md) — Vue, Nuxt, FastAPI fragments
 - [Docker Templates](./docker/docker-templates.md) — stack Dockerfiles
 - [GitHub — Purge](./github/purge.md) — purge actions, packages, releases, tags

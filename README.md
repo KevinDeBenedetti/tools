@@ -10,6 +10,7 @@
 - Reusable Makefile fragments for Vue, Nuxt, and FastAPI projects
 - Docker templates organized by stack
 - `devkit` — Rust CLI/TUI to apply stack templates interactively
+- Local web UI (`bun run ui`) — the same commands as a browser form, generated from the command registry (React + shadcn/ui)
 - Destructive commands support `--dry-run` to preview before executing
 - Bats test suite and ShellCheck for all shell scripts
 

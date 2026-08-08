@@ -1,5 +1,7 @@
-import OpenAI from "openai";
+import type OpenAI from "openai";
+import { classifyError, type ErrorKind, withRetry } from "./errors";
 import { estimateCost, type ModelDef } from "./models";
+import { complete } from "./request";
 
 export interface BenchmarkConfig {
   prompt: string;
@@ -7,7 +9,14 @@ export interface BenchmarkConfig {
   maxTokens: number;
   /** Stream mode measures TTFT accurately */
   stream: boolean;
+  /** Abort a single request after this long */
+  timeoutMs: number;
+  /** Retries per run on transient failures (429, 5xx, timeout) */
+  retries: number;
 }
+
+export const DEFAULT_TIMEOUT_MS = 60_000;
+export const DEFAULT_RETRIES = 2;
 
 export interface RunResult {
   ttfms: number | null;
@@ -17,6 +26,7 @@ export interface RunResult {
   costUsd: number;
   tokensPerSec: number;
   error?: string;
+  errorKind?: ErrorKind;
 }
 
 export interface ModelBenchmarkResult {
@@ -24,6 +34,7 @@ export interface ModelBenchmarkResult {
   label: string;
   /** Whether cost figures are based on real provider pricing */
   pricingKnown: boolean;
+  isFree: boolean;
   runs: RunResult[];
   stats: BenchmarkStats;
 }
@@ -36,6 +47,8 @@ export interface BenchmarkStats {
   outputTokens: { mean: number };
   totalCostUsd: number;
   successRate: number;
+  /** Failure counts per kind, so rate limiting reads differently from a dead model */
+  errorCounts: Partial<Record<ErrorKind, number>>;
 }
 
 function percentile(sorted: number[], p: number): number {
@@ -57,68 +70,79 @@ async function runOnce(
   client: OpenAI,
   model: ModelDef,
   config: BenchmarkConfig,
+  onRetry?: (attempt: number, kind: ErrorKind, delayMs: number) => void,
 ): Promise<RunResult> {
   const start = performance.now();
-  let ttfms: number | null = null;
-  let inputTokens = 0;
-  let outputTokens = 0;
 
   try {
-    // Create an AbortController with a 60-second timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
-
-    try {
-      if (config.stream) {
-        const stream = await client.chat.completions.create({
-          max_tokens: config.maxTokens,
-          messages: [{ content: config.prompt, role: "user" }],
+    // Retries are excluded from the reported timings: withRetry returns the
+    // timing of the attempt that actually succeeded.
+    const result = await withRetry(
+      () =>
+        complete(client, {
+          maxTokens: config.maxTokens,
           model: model.id,
-          stream: true,
-          stream_options: { include_usage: true },
-        });
+          prompt: config.prompt,
+          stream: config.stream,
+          timeoutMs: config.timeoutMs,
+        }),
+      {
+        onRetry: (attempt, error, delayMs) => onRetry?.(attempt, error.kind, delayMs),
+        retries: config.retries,
+      },
+    );
 
-        for await (const chunk of stream) {
-          if (ttfms === null && chunk.choices[0]?.delta?.content) {
-            ttfms = performance.now() - start;
-          }
-          const usage = chunk.usage;
-          if (usage) {
-            inputTokens = usage.prompt_tokens;
-            outputTokens = usage.completion_tokens;
-          }
-        }
-      } else {
-        const resp = await client.chat.completions.create({
-          max_tokens: config.maxTokens,
-          messages: [{ content: config.prompt, role: "user" }],
-          model: model.id,
-          stream: false,
-        });
-        inputTokens = resp.usage?.prompt_tokens ?? 0;
-        outputTokens = resp.usage?.completion_tokens ?? 0;
-      }
-    } finally {
-      clearTimeout(timeoutId);
-    }
+    const tokensPerSec =
+      result.outputTokens > 0 ? (result.outputTokens / result.totalMs) * 1000 : 0;
 
-    const totalMs = performance.now() - start;
-    const tokensPerSec = outputTokens > 0 ? (outputTokens / totalMs) * 1000 : 0;
-    const costUsd = estimateCost(model, inputTokens, outputTokens);
-
-    return { costUsd, inputTokens, outputTokens, tokensPerSec, totalMs, ttfms };
+    return {
+      costUsd: estimateCost(model, result.inputTokens, result.outputTokens),
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      tokensPerSec,
+      totalMs: result.totalMs,
+      ttfms: result.ttfMs,
+    };
   } catch (err) {
-    const totalMs = performance.now() - start;
+    const classified = classifyError(err);
     return {
       costUsd: 0,
-      error: err instanceof Error ? err.message : String(err),
+      error: classified.message,
+      errorKind: classified.kind,
       inputTokens: 0,
       outputTokens: 0,
       tokensPerSec: 0,
-      totalMs,
+      totalMs: performance.now() - start,
       ttfms: null,
     };
   }
+}
+
+export function summarize(runs: RunResult[]): BenchmarkStats {
+  const successful = runs.filter((r) => !r.error);
+  const successRate = runs.length === 0 ? 0 : successful.length / runs.length;
+
+  const errorCounts: Partial<Record<ErrorKind, number>> = {};
+  for (const run of runs) {
+    if (run.errorKind !== undefined) {
+      errorCounts[run.errorKind] = (errorCounts[run.errorKind] ?? 0) + 1;
+    }
+  }
+
+  const ttfValues = successful.map((r) => r.ttfms).filter((v): v is number => v !== null);
+
+  return {
+    errorCounts,
+    inputTokens: successful[0]?.inputTokens ?? 0,
+    outputTokens: {
+      mean: successful.reduce((s, r) => s + r.outputTokens, 0) / (successful.length || 1),
+    },
+    successRate,
+    tokensPerSec: stats(successful.map((r) => r.tokensPerSec)),
+    totalCostUsd: runs.reduce((s, r) => s + r.costUsd, 0),
+    totalMs: stats(successful.map((r) => r.totalMs)),
+    ttfMs: ttfValues.length > 0 ? stats(ttfValues) : null,
+  };
 }
 
 export async function benchmarkModel(
@@ -126,40 +150,21 @@ export async function benchmarkModel(
   model: ModelDef,
   config: BenchmarkConfig,
   onRunComplete?: (run: number, result: RunResult) => void,
+  onRetry?: (attempt: number, kind: ErrorKind, delayMs: number) => void,
 ): Promise<ModelBenchmarkResult> {
   const runs: RunResult[] = [];
   for (let i = 0; i < config.runs; i++) {
-    const result = await runOnce(client, model, config);
+    const result = await runOnce(client, model, config, onRetry);
     runs.push(result);
     onRunComplete?.(i + 1, result);
   }
 
-  const successful = runs.filter((r) => !r.error);
-  const successRate = successful.length / runs.length;
-
-  const totalStats = stats(successful.map((r) => r.totalMs));
-  const tpsStats = stats(successful.map((r) => r.tokensPerSec));
-  const outputTokensMean =
-    successful.reduce((s, r) => s + r.outputTokens, 0) / (successful.length || 1);
-  const inputTokens = successful[0]?.inputTokens ?? 0;
-  const totalCostUsd = runs.reduce((s, r) => s + r.costUsd, 0);
-
-  const ttfValues = successful.map((r) => r.ttfms).filter((v): v is number => v !== null);
-  const ttfMs = ttfValues.length > 0 ? stats(ttfValues) : null;
-
   return {
+    isFree: model.isFree,
     label: model.label,
     modelId: model.id,
     pricingKnown: model.pricingKnown,
     runs,
-    stats: {
-      inputTokens,
-      outputTokens: { mean: outputTokensMean },
-      successRate,
-      totalCostUsd,
-      tokensPerSec: tpsStats,
-      totalMs: totalStats,
-      ttfMs,
-    },
+    stats: summarize(runs),
   };
 }

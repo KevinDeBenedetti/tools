@@ -55,6 +55,9 @@
     "../node_modules",
     "../dist",
     "../**/*.test.ts",
-    "../**/*.spec.ts"
+    "../**/*.spec.ts",
+    // Browser half of the web UI — checked by tsconfig.web.json, which swaps the
+    // Bun globals for DOM ones
+    "../src/web/app"
   ]
 }

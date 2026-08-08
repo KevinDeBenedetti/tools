@@ -11,6 +11,8 @@
   ],
   "exclude": [
     "../node_modules",
-    "../dist"
+    "../dist",
+    // Browser half of the web UI — see tsconfig.web.json
+    "../src/web/app"
   ]
 }

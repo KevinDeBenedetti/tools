@@ -1,0 +1,26 @@
+{
+  // The browser bundle. Same strictness as the rest of the repo, but typed
+  // against the DOM instead of Bun — the two disagree about globals such as
+  // ReadableStream, so they can't share one program.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": [],
+    // Aliases live in package.json#imports ("#components/…") rather than in
+    // tsconfig paths: Bun's bundler only honours paths alongside a baseUrl, and
+    // TypeScript 7 removed baseUrl. shadcn/ui supports this alias style, and
+    // components.json points at it.
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false
+  },
+  "include": [
+    "../src/web/app/**/*"
+  ],
+  "exclude": [
+    "../node_modules",
+    "../dist"
+  ]
+}
