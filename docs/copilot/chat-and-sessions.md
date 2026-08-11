@@ -11,7 +11,7 @@ Build interactive AI-powered workflows using the Copilot SDK. This guide covers 
 | Feature | Purpose | Use Case |
 |---------|---------|----------|
 | **💬 Interactive Chat** | Multi-turn Copilot conversation in CLI | Ask questions, get summaries, iterate on code reviews |
-| **📝 PR Summary** | Auto-generate PR summaries with GitHub Actions | Post summaries as PR comments automatically |
+| **📝 PR Summary** | Generate a PR summary from the CLI | Summarize a PR diff on demand with `bun run summary` |
 | **🔄 Resume Sessions** | Continue a Copilot conversation later | Persistent session state for long workflows |
 
 ## Quick Start
@@ -52,18 +52,6 @@ GITHUB_TOKEN=$(gh auth token) bun run summary \
 ```
 
 **Available types:** `summary`, `docs`, `changelog`, `tests`
-
-### 3. Automated PR Summary (GitHub Actions)
-
-The workflow runs automatically on every PR:
-
-```
-PR opened/updated → GitHub Actions
-  ↓
-Copilot SDK generates summary (example: using default model)
-  ↓
-Posts comment on PR + Actions summary tab
-```
 
 ## Architecture
 
@@ -136,58 +124,15 @@ const fullResponse = await chat.ask("Hello", (chunk) => {
 });
 ```
 
-## GitHub Actions Workflow
+## Authentication
 
-### Setup
+The Copilot SDK reads its token from `COPILOT_GITHUB_TOKEN`, then `GH_TOKEN`, then
+`GITHUB_TOKEN`. A Classic PAT with the `repo` scope is enough — there is no "copilot"
+scope — but **the account behind the token must have an active Copilot Individual or
+Business subscription**, which the SDK validates server-side.
 
-1. **Create a Classic PAT** (not fine-grained):
-   - Go to github.com → Settings → Developer settings → Tokens (classic)
-   - Scopes: `repo` (that's all — no "copilot" scope exists)
-   - **Account must have GitHub Copilot Individual or Business active**
-
-2. **Add secret to your repo:**
-   - Settings → Secrets and variables → Actions → New secret
-   - Name: `COPILOT_TOKEN`
-   - Value: `ghp_xxxx...` (your Classic PAT)
-
-3. **Workflow runs automatically** on every PR targeting `main`:
-   ```yaml
-   on:
-     pull_request:
-       types: [opened, synchronize, reopened]
-   ```
-
-### How it works
-
-```mermaid
-PR opened
-  ↓
-.github/workflows/copilot-pr-summary.yml triggers
-  ↓
-Copilot Action calls generate tool
-  ↓
-GenerateService reads PR diff
-  ↓
-Copilot SDK (gpt-5-mini) generates summary
-  ↓
-Summary posted as PR comment + Actions summary tab
-  ↓
-On re-run, old comment is deleted (stays fresh)
-```
-
-### Customizing the workflow
-
-Edit `.github/workflows/copilot-pr-summary.yml`:
-
-```yaml
-# Generate different type (default: summary)
-options: '{"type":"changelog","format":"markdown"}'
-
-# Use gpt-5-mini (fast, cost-effective)
-model: gpt-5-mini
-
-# Add custom instructions
-options: '{"type":"summary","instructions":"Focus on breaking changes"}'
+```bash
+export GITHUB_TOKEN=$(gh auth token)
 ```
 
 ## API Reference
@@ -232,26 +177,6 @@ class ResumeService {
   ): Promise<string>;
 }
 ```
-
-### `ResumeTool` (GitHub Actions)
-
-**Inputs:**
-
-| Input | Required | Example |
-|-------|----------|---------|
-| `tool` | ✓ | `resume` |
-| `token` | ✓ | <code v-pre>${{ secrets.COPILOT_TOKEN }}</code> |
-| `options` | ✗ | `{"prompt":"Any issues?","focus":"security"}` |
-| `model` | ✗ | `gpt-5-mini` (default) |
-
-**Outputs:**
-
-| Output | Description |
-|--------|-------------|
-| `summary` | Tool execution summary |
-| `success` | `"true"` or `"false"` |
-| `response` | Copilot's text response |
-| `sessionId` | Session ID (for tracing) |
 
 ### `GenerateService` (for summaries)
 
@@ -314,10 +239,6 @@ GITHUB_TOKEN=$(gh auth token) bun run summary \
 
 ⏱️ **Sessions expire after inactivity.** The SDK's `resumeSession()` falls back to creating a new session if the old one is gone — this is normal.
 
-### Streaming not showing in Actions
-
-📝 **Actions UI doesn't stream in real-time.** Streaming works locally and shows in step logs. The full response is always captured in `outputs.response`.
-
 ## Examples
 
 ### Example 1: PR Review Feedback Loop
@@ -353,20 +274,13 @@ You › /clear
 # [starts fresh session]
 ```
 
-### Example 3: Custom Action in Workflow
+### Example 3: Generate a changelog instead of a summary
 
-```yaml
-- name: Generate detailed changelog
-  uses: ./.github/actions/copilot
-  with:
-    tool: generate
-    token: ${{ secrets.COPILOT_TOKEN }}
-    model: gpt-5-mini
-    options: |
-      {
-        "type": "changelog",
-        "instructions": "Include breaking changes, new features, and deprecations"
-      }
+```bash
+GITHUB_TOKEN=$(gh auth token) bun run summary \
+  --owner me --repo tools --pr 7 \
+  --type changelog \
+  --model gpt-5-mini
 ```
 
 ## See Also
