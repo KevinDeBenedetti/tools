@@ -80,6 +80,13 @@ async function runOnce(
     const result = await withRetry(
       () =>
         complete(client, {
+          // Reasoning is switched off for the same reason the quality suite
+          // switches it off: a reasoning model spends the whole output budget
+          // thinking, emits no content delta, and so reports no TTFT at all —
+          // which is the headline metric of a streaming run. Free catalogues
+          // are largely reasoning models, so this is the common case, not an
+          // edge one.
+          disableReasoning: model.hasReasoning,
           maxTokens: config.maxTokens,
           model: model.id,
           prompt: config.prompt,

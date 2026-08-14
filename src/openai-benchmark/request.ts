@@ -21,6 +21,9 @@ export interface CompletionRequest {
    *
    * `exclude: true` is deliberately not used — it only hides reasoning from
    * the response while still spending the output budget on it.
+   *
+   * Treated as a preference, not an instruction: an endpoint that mandates
+   * reasoning says so with a 400, and the request is then re-sent without it.
    */
   disableReasoning?: boolean;
 }
@@ -35,7 +38,52 @@ export interface CompletionResult {
   totalMs: number;
 }
 
+/**
+ * Models that answered "reasoning cannot be disabled". Some endpoints advertise
+ * reasoning *and* mandate it, and nothing in the model metadata tells the two
+ * apart — only a 400 does. Asking once per model per process is the cost of
+ * finding out; asking every time is not.
+ */
+const REASONING_MANDATORY = new Set<string>();
+
+/** Whether the provider rejected the request *because* reasoning was switched off. */
+function mandatesReasoning(err: unknown): boolean {
+  if (err === null || typeof err !== "object") return false;
+  const e = err as { status?: unknown; message?: unknown };
+  if (e.status !== 400) return false;
+  const message = typeof e.message === "string" ? e.message : "";
+  return /reasoning/i.test(message) && /mandatory|cannot be disabled|required/i.test(message);
+}
+
+/**
+ * Issue the completion, falling back to the model's own terms when the provider
+ * refuses to run it without reasoning. The retry is deliberately not folded into
+ * `withRetry`: this is not a transient failure, it is the provider telling us
+ * the request shape is wrong, and the answer is to change the shape once.
+ */
 export async function complete(client: OpenAI, req: CompletionRequest): Promise<CompletionResult> {
+  const disable = req.disableReasoning === true && !REASONING_MANDATORY.has(req.model);
+  try {
+    return await send(client, req, disable);
+  } catch (err) {
+    if (!disable || !mandatesReasoning(err)) throw err;
+    REASONING_MANDATORY.add(req.model);
+    // Measured on its own terms rather than dropped: a model that must think is
+    // still a model you can benchmark, just not one you can compare on TTFT.
+    return await send(client, req, false);
+  }
+}
+
+/** Exposed for tests; the cache is process-wide and otherwise write-only. */
+export function resetReasoningCache(): void {
+  REASONING_MANDATORY.clear();
+}
+
+async function send(
+  client: OpenAI,
+  req: CompletionRequest,
+  disableReasoning: boolean,
+): Promise<CompletionResult> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), req.timeoutMs);
   const start = performance.now();
@@ -56,7 +104,7 @@ export async function complete(client: OpenAI, req: CompletionRequest): Promise<
     ...(req.json === true ? { response_format: { type: "json_object" as const } } : {}),
     ...(req.tools === undefined ? {} : { tools: req.tools }),
     // Provider extension, absent from the SDK's types.
-    ...(req.disableReasoning === true ? { reasoning: { enabled: false } } : {}),
+    ...(disableReasoning ? { reasoning: { enabled: false } } : {}),
   };
 
   try {

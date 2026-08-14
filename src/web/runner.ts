@@ -12,6 +12,9 @@ import type { RunEvent } from "./protocol";
 export const REPO_ROOT = join(import.meta.dir, "..", "..");
 const CLI_ENTRY = join(REPO_ROOT, "src", "cli", "index.ts");
 
+/** Comfortably under any sane idle timeout, including Bun's 10s default. */
+export const HEARTBEAT_MS = 5_000;
+
 function encodeEvent(event: RunEvent): Uint8Array {
   return new TextEncoder().encode(`${JSON.stringify(event)}\n`);
 }
@@ -36,15 +39,26 @@ async function pump(
  * NDJSON, one RunEvent per line. Aborting the request (the UI's Stop button, or
  * a closed tab) kills the child.
  */
-export function streamRun(argv: string[], signal?: AbortSignal): ReadableStream<Uint8Array> {
+export interface RunOptions {
+  signal?: AbortSignal;
+  /** Session env overrides, layered over the server's own environment */
+  env?: Record<string, string>;
+  /** Injectable for tests */
+  heartbeatMs?: number;
+}
+
+export function streamRun(argv: string[], options: RunOptions = {}): ReadableStream<Uint8Array> {
+  const { signal, env = {}, heartbeatMs = HEARTBEAT_MS } = options;
+
   const proc = Bun.spawn({
     // process.execPath, not "bun": the child must run on the same runtime as
     // the server, whatever version resolution put on PATH.
     cmd: [process.execPath, "run", CLI_ENTRY, ...argv],
     cwd: REPO_ROOT,
     // Child is not a TTY: picocolors already degrades to plain text, and
-    // NO_COLOR keeps any other library from emitting escape codes.
-    env: { ...process.env, NO_COLOR: "1" },
+    // NO_COLOR keeps any other library from emitting escape codes. Overrides go
+    // last so a value set in the UI wins over the one the server started with.
+    env: { ...process.env, NO_COLOR: "1", ...env },
     stderr: "pipe",
     stdin: "ignore",
     stdout: "pipe",
@@ -70,6 +84,13 @@ export function streamRun(argv: string[], signal?: AbortSignal): ReadableStream<
         }
       };
 
+      // A command is not obliged to say anything while it works: a single
+      // benchmark probe can sit on one HTTP request for a minute. Without
+      // traffic the server closes the response as idle and the browser reports
+      // a broken stream, so the silence is filled with events that render to
+      // nothing.
+      const heartbeat = setInterval(() => emit({ type: "ping" }), heartbeatMs);
+
       try {
         await Promise.all([pump(proc.stdout, "out", emit), pump(proc.stderr, "err", emit)]);
         emit({ code: await proc.exited, type: "exit" });
@@ -80,6 +101,7 @@ export function streamRun(argv: string[], signal?: AbortSignal): ReadableStream<
         });
         emit({ code: 1, type: "exit" });
       } finally {
+        clearInterval(heartbeat);
         signal?.removeEventListener("abort", kill);
         if (open) {
           try {

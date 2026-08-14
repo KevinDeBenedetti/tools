@@ -34,6 +34,37 @@ jobs:
       # CodeQL disabled: No TypeScript/JavaScript SAST needed for tools management (use linter + typecheck)
       run-codeql: false
 
+  # Deliberately a local job rather than the shared cd-docker.yml: that one is a
+  # deploy workflow whose job declares `packages: write` and `deployments:
+  # write`. A reusable workflow cannot request more than its caller holds, so
+  # reusing it for a build check would mean granting write scopes to a job that
+  # only needs to know whether the image compiles — and it would fail outright on
+  # fork pull requests, where the token is read-only. Nothing is pushed here.
+  docker:
+    name: Build image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build the runtime image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: runtime
+          push: false
+          # One platform on purpose: this answers "does it still build", and
+          # emulating arm64 under QEMU would multiply the runtime for no extra
+          # signal. Publishing, if it ever happens, is what needs both.
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   bot-check:
     if: github.event_name == 'pull_request'
     permissions:

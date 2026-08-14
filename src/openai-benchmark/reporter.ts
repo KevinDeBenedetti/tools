@@ -25,6 +25,22 @@ function fmtPct(ratio: number): string {
   return `${fmt(ratio * 100, 0)}%`;
 }
 
+/** A wait measured in hours, not the sub-second precision fmtMs is built for. */
+export function fmtCountdown(ms: number): string {
+  if (ms <= 0) return "now";
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 1) return "under a minute";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
+}
+
+/** Wall-clock time in the user's own timezone — the point is to know when to come back. */
+function fmtClock(at: number): string {
+  return new Date(at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
 const ERROR_LABELS: Record<ErrorKind, string> = {
   auth: "auth rejected",
   bad_request: "request rejected",
@@ -57,11 +73,14 @@ export function describeError(error: { kind: ErrorKind; message: string } | unde
 
 const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
-export function createSpinner(message: string): {
+export interface Spinner {
   log: (msg: string) => void;
   update: (msg: string) => void;
   stop: (final: string) => void;
-} {
+}
+
+/** Animated in place: one line, rewritten with `\r` twelve times a second. */
+function animatedSpinner(message: string): Spinner {
   let frame = 0;
   let stopped = false;
   let current = message;
@@ -94,6 +113,41 @@ export function createSpinner(message: string): {
   };
 }
 
+/**
+ * One plain line per state change, and nothing at all while a step is merely
+ * still running. Repeats are dropped so a caller that re-reports the same
+ * message costs no output.
+ */
+function plainSpinner(message: string): Spinner {
+  let last = "";
+
+  const line = (msg: string): void => {
+    if (msg === last) return;
+    last = msg;
+    process.stdout.write(`  ${color.dim(msg)}\n`);
+  };
+
+  line(message);
+
+  return {
+    log: (msg: string) => process.stdout.write(`${msg}\n`),
+    stop: (final: string) => process.stdout.write(`  ${color.green("✓")} ${final}\n`),
+    update: line,
+  };
+}
+
+/**
+ * Progress has two audiences. A terminal can be redrawn in place; a pipe — the
+ * web UI, a log file, CI — cannot, and animating into one is not merely ugly:
+ * a benchmark that runs for ten minutes emits some 7 500 `\r`-prefixed frames
+ * with nothing to consume the escape codes, which is the wall of `[K` lines the
+ * UI ends up holding and re-rendering. Non-TTY output therefore gets discrete
+ * lines that each say something new.
+ */
+export function createSpinner(message: string): Spinner {
+  return process.stdout.isTTY === true ? animatedSpinner(message) : plainSpinner(message);
+}
+
 // ── Probe report ───────────────────────────────────────────────────────────────
 
 export function printProbeSummary(alive: number, dead: ProbeResult[]): void {
@@ -107,6 +161,44 @@ export function printProbeSummary(alive: number, dead: ProbeResult[]): void {
     log.step(`${result.model.id} — ${describeError(result.error)}`);
   }
   log.info(`${alive} model(s) left to benchmark`);
+
+  // "dropped — no usable response" reads as "these models are broken", which is
+  // the wrong conclusion when every one of them was throttled: the quota is
+  // account-wide, so the models are fine and nothing you change about the
+  // selection will help.
+  const throttled = dead.filter((d) => d.error?.kind === "rate_limited").length;
+  if (throttled === dead.length && alive === 0) {
+    log.blank();
+    log.error("Every model was rate limited — this is the account's quota, not the models.");
+    log.step("Free tiers cap requests per minute and per day; a full run asks for dozens.");
+
+    // The provider knows when its own window reopens; guessing at it, or making
+    // the user convert a UTC daily reset in their head, is work it already did.
+    const resetAt = latestReset(dead);
+    if (resetAt === undefined) {
+      log.step("Wait for the quota window to reset, then narrow the run:");
+    } else {
+      log.step(
+        `Quota reopens at ${fmtClock(resetAt)}, in ${fmtCountdown(resetAt - Date.now())}. Then narrow the run:`,
+      );
+    }
+
+    log.step("  bun run tools benchmark run --free --limit 3 --runs 1 --retries 0");
+    log.step(
+      "OpenRouter's limits and how to check your key: https://openrouter.ai/docs/api-reference/limits",
+    );
+  }
+}
+
+/**
+ * The furthest reset any model reported. They should agree — an account quota is
+ * one window — but the late one is the safe one to wait for.
+ */
+function latestReset(dead: ProbeResult[]): number | undefined {
+  const resets = dead
+    .map((d) => d.error?.resetAt)
+    .filter((at): at is number => at !== undefined && Number.isFinite(at));
+  return resets.length === 0 ? undefined : Math.max(...resets);
 }
 
 // ── Results table ──────────────────────────────────────────────────────────────

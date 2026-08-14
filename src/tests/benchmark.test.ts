@@ -13,6 +13,13 @@ import {
   parseModelQuery,
   unknownModel,
 } from "../openai-benchmark/models";
+import {
+  createSpinner,
+  fmtCountdown,
+  printProbeSummary,
+  type Spinner,
+} from "../openai-benchmark/reporter";
+import { complete, resetReasoningCache } from "../openai-benchmark/request";
 
 // Minimal fake of the bits of the OpenAI client that fetchModels touches.
 function fakeClient(data: unknown[], onList?: (options?: unknown) => void): OpenAI {
@@ -545,5 +552,286 @@ describe("summarize", () => {
     expect(stats.errorCounts).toEqual({ rate_limited: 2, unavailable: 1 });
     expect(stats.successRate).toBe(0);
     expect(stats.ttfMs).toBeNull();
+  });
+});
+
+// ── Progress reporting ─────────────────────────────────────────────────────────
+
+describe("createSpinner", () => {
+  /** Run `body` with stdout pretending to be (or not to be) a terminal. */
+  function capture(isTTY: boolean, body: (spinner: Spinner) => void): string {
+    const stdout = process.stdout as unknown as {
+      isTTY?: boolean;
+      write: (chunk: string) => boolean;
+    };
+    const realWrite = stdout.write.bind(stdout);
+    const realIsTTY = stdout.isTTY;
+    let out = "";
+
+    Object.defineProperty(stdout, "isTTY", { configurable: true, value: isTTY });
+    stdout.write = (chunk: string) => {
+      out += chunk;
+      return true;
+    };
+    try {
+      body(createSpinner("Probing 3 models…"));
+    } finally {
+      stdout.write = realWrite;
+      Object.defineProperty(stdout, "isTTY", { configurable: true, value: realIsTTY });
+    }
+    return out;
+  }
+
+  test("emits no cursor control when stdout is not a terminal", () => {
+    // Animating into a pipe produced ~12 escape-laden frames a second, which is
+    // what the web UI had to hold and re-render for the length of a run.
+    const out = capture(false, (spinner) => {
+      spinner.update("Probing 1/3 — a");
+      spinner.stop("Probe complete");
+    });
+
+    expect(out).not.toInclude("\r");
+    expect(out).not.toInclude("\x1b[K");
+    expect(out.split("\n").filter((l) => l !== "")).toHaveLength(3);
+    expect(out).toInclude("Probing 1/3 — a");
+    expect(out).toInclude("Probe complete");
+  });
+
+  test("drops repeated messages instead of reprinting them", () => {
+    const out = capture(false, (spinner) => {
+      spinner.update("same");
+      spinner.update("same");
+      spinner.stop("done");
+    });
+
+    expect(out.split("same").length - 1).toBe(1);
+  });
+
+  test("still redraws in place on a terminal", () => {
+    const out = capture(true, (spinner) => {
+      spinner.stop("done");
+    });
+
+    expect(out).toInclude("\r\x1b[K");
+  });
+});
+
+// ── Mandatory reasoning ────────────────────────────────────────────────────────
+
+describe("complete / reasoning fallback", () => {
+  /**
+   * A client that rejects any request carrying `reasoning`, the way endpoints
+   * which advertise reasoning but mandate it actually behave.
+   */
+  function reasoningMandatoryClient(): { client: OpenAI; bodies: Record<string, unknown>[] } {
+    const bodies: Record<string, unknown>[] = [];
+    const client = {
+      chat: {
+        completions: {
+          create: async (body: Record<string, unknown>) => {
+            bodies.push(body);
+            if (body["reasoning"] !== undefined) {
+              throw Object.assign(
+                new Error("400 Reasoning is mandatory for this endpoint and cannot be disabled."),
+                { status: 400 },
+              );
+            }
+            return {
+              choices: [{ message: { content: "ok" } }],
+              usage: { completion_tokens: 2, prompt_tokens: 1 },
+            };
+          },
+        },
+      },
+    } as unknown as OpenAI;
+    return { bodies, client };
+  }
+
+  const request = {
+    disableReasoning: true,
+    maxTokens: 8,
+    model: "openai/gpt-oss-20b:free",
+    prompt: "Say OK.",
+    stream: false,
+    timeoutMs: 5_000,
+  };
+
+  test("a model that must think is measured, not dropped", async () => {
+    // Sending reasoning:{enabled:false} to such a model 400s, and in the probe a
+    // 400 means the model is discarded before it is ever benchmarked.
+    resetReasoningCache();
+    const { bodies, client } = reasoningMandatoryClient();
+
+    const result = await complete(client, request);
+
+    expect(result.text).toBe("ok");
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0]?.["reasoning"]).toEqual({ enabled: false });
+    expect(bodies[1]?.["reasoning"]).toBeUndefined();
+  });
+
+  test("the refusal is remembered, so the cost is paid once per model", async () => {
+    resetReasoningCache();
+    const { bodies, client } = reasoningMandatoryClient();
+
+    await complete(client, request);
+    await complete(client, request);
+
+    expect(bodies).toHaveLength(3);
+    expect(bodies[2]?.["reasoning"]).toBeUndefined();
+  });
+
+  test("an unrelated 400 still surfaces", async () => {
+    resetReasoningCache();
+    const client = {
+      chat: {
+        completions: {
+          create: async () => {
+            throw Object.assign(new Error("400 Unsupported parameter: max_tokens"), {
+              status: 400,
+            });
+          },
+        },
+      },
+    } as unknown as OpenAI;
+
+    expect(complete(client, request)).rejects.toThrow("Unsupported parameter");
+  });
+});
+
+// ── Probe diagnosis ────────────────────────────────────────────────────────────
+
+describe("printProbeSummary", () => {
+  function capture(body: () => void): string {
+    const realLog = console.log;
+    const realError = console.error;
+    let out = "";
+    const sink = (...args: unknown[]) => {
+      out += `${args.join(" ")}\n`;
+    };
+    console.log = sink;
+    console.error = sink;
+    try {
+      body();
+    } finally {
+      console.log = realLog;
+      console.error = realError;
+    }
+    return out;
+  }
+
+  const dead = (id: string, kind: "rate_limited" | "unavailable", resetAt?: number) => ({
+    error: { kind, message: kind, ...(resetAt === undefined ? {} : { resetAt }) },
+    latencyMs: 1,
+    model: model({ id }),
+    ok: false,
+  });
+
+  test("a wipe-out by rate limiting is named as a quota, not as broken models", () => {
+    // "dropped — no usable response" on all 16 free models reads as though the
+    // catalogue were dead, when the account had simply spent its daily quota.
+    const out = capture(() => {
+      printProbeSummary(0, [dead("a", "rate_limited"), dead("b", "rate_limited")]);
+    });
+
+    expect(out).toInclude("account's quota");
+    expect(out).toInclude("--limit 3 --runs 1 --retries 0");
+  });
+
+  test("stays quiet when some models did answer", () => {
+    const out = capture(() => {
+      printProbeSummary(1, [dead("a", "rate_limited")]);
+    });
+
+    expect(out).not.toInclude("account's quota");
+  });
+
+  test("stays quiet when the failures are not all rate limits", () => {
+    const out = capture(() => {
+      printProbeSummary(0, [dead("a", "rate_limited"), dead("b", "unavailable")]);
+    });
+
+    expect(out).not.toInclude("account's quota");
+  });
+
+  test("reports when the quota reopens, using the provider's own answer", () => {
+    const out = capture(() => {
+      printProbeSummary(0, [
+        dead("a", "rate_limited", Date.now() + 30 * 60_000),
+        // The furthest reset wins: coming back too early just burns the retry.
+        dead("b", "rate_limited", Date.now() + 70 * 60_000),
+      ]);
+    });
+
+    expect(out).toInclude("in 1h 10m");
+    expect(out).toMatch(/Quota reopens at \d{1,2}[:.]\d{2}/);
+    expect(out).not.toInclude("Wait for the quota window to reset");
+  });
+
+  test("falls back to generic advice when no reset was reported", () => {
+    const out = capture(() => {
+      printProbeSummary(0, [dead("a", "rate_limited")]);
+    });
+
+    expect(out).toInclude("Wait for the quota window to reset");
+    expect(out).not.toInclude("Quota reopens at");
+  });
+});
+
+// ── Rate-limit reset ───────────────────────────────────────────────────────────
+
+describe("classifyError / resetAt", () => {
+  const limited = (headers: Record<string, string>) =>
+    classifyError(Object.assign(new Error("429 Rate limit exceeded"), { headers, status: 429 }));
+
+  test("reads OpenRouter's absolute millisecond timestamp", () => {
+    const at = Date.now() + 70 * 60_000;
+    expect(limited({ "x-ratelimit-reset": String(at) }).resetAt).toBe(at);
+  });
+
+  test("reads an absolute second timestamp", () => {
+    const seconds = Math.floor((Date.now() + 3_600_000) / 1000);
+    expect(limited({ "x-ratelimit-reset": String(seconds) }).resetAt).toBe(seconds * 1000);
+  });
+
+  test("reads a plain number as seconds from now", () => {
+    const before = Date.now();
+    const at = limited({ "x-ratelimit-reset": "120" }).resetAt ?? 0;
+    expect(at - before).toBeGreaterThanOrEqual(120_000);
+    expect(at - before).toBeLessThan(125_000);
+  });
+
+  test("reads OpenAI's duration form off the per-request header", () => {
+    const before = Date.now();
+    const at = limited({ "x-ratelimit-reset-requests": "6m0s" }).resetAt ?? 0;
+    expect(at - before).toBeGreaterThanOrEqual(360_000);
+    expect(at - before).toBeLessThan(365_000);
+  });
+
+  test("discards a reset in the past or absurdly far out", () => {
+    // A misread unit turns minutes into millennia; showing that is worse than
+    // showing nothing.
+    expect(limited({ "x-ratelimit-reset": String(Date.now() - 60_000) }).resetAt).toBeUndefined();
+    expect(limited({ "x-ratelimit-reset": String(Date.now() + 1e10) }).resetAt).toBeUndefined();
+    expect(limited({ "x-ratelimit-reset": "nonsense" }).resetAt).toBeUndefined();
+    expect(limited({}).resetAt).toBeUndefined();
+  });
+
+  test("only rate limits carry a reset", () => {
+    const err = Object.assign(new Error("500"), {
+      headers: { "x-ratelimit-reset": String(Date.now() + 60_000) },
+      status: 500,
+    });
+    expect(classifyError(err).resetAt).toBeUndefined();
+  });
+});
+
+describe("fmtCountdown", () => {
+  test("reads as a wait, not as a latency", () => {
+    expect(fmtCountdown(70 * 60_000)).toBe("1h 10m");
+    expect(fmtCountdown(120 * 60_000)).toBe("2h");
+    expect(fmtCountdown(12 * 60_000)).toBe("12m");
+    expect(fmtCountdown(20_000)).toBe("under a minute");
+    expect(fmtCountdown(0)).toBe("now");
   });
 });
