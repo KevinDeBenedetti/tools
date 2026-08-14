@@ -29,8 +29,34 @@ export interface WebGroup {
   commands: WebCommand[];
 }
 
-/** One NDJSON line of a streamed run. */
+/**
+ * One environment variable as the browser is allowed to see it.
+ *
+ * `masked` is a redacted rendering produced on the server — a secret's real
+ * value has no route to the client, by design. `null` means unset.
+ */
+export interface EnvVarState {
+  name: string;
+  description: string;
+  masked: string | null;
+  secret: boolean;
+  /** Where the value in effect comes from */
+  source: "override" | "environment" | "unset";
+  /** Whether the UI may set this one for the session */
+  editable: boolean;
+  /** Commands that read it, so an unset variable says what it breaks */
+  usedBy: string[];
+}
+
+/**
+ * One NDJSON line of a streamed run.
+ *
+ * `ping` carries nothing and is never displayed: it exists so a command that
+ * stays quiet for a long time — a benchmark waiting on a slow model — keeps the
+ * connection alive rather than being cut short as idle.
+ */
 export type RunEvent =
   | { type: "out"; data: string }
   | { type: "err"; data: string }
+  | { type: "ping" }
   | { type: "exit"; code: number };

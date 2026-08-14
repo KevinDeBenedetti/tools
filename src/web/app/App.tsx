@@ -4,18 +4,21 @@ import {
   GitBranchIcon,
   ListTodoIcon,
   SearchIcon,
+  ServerIcon,
   TerminalIcon,
 } from "lucide-react";
 import { type JSX, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { CommandPanel } from "#components/command-panel";
+import { EnvPanel } from "#components/env-panel";
 import { ThemeToggle } from "#components/theme-toggle";
+import { Button } from "#components/ui/button";
 import { Input } from "#components/ui/input";
 import { ScrollArea } from "#components/ui/scroll-area";
 import { Separator } from "#components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "#components/ui/tooltip";
 import { cn } from "#lib/utils";
-import type { WebGroup } from "../protocol";
+import type { EnvVarState, WebGroup } from "../protocol";
 
 const GROUP_ICONS: Record<string, typeof TerminalIcon> = {
   benchmark: GaugeIcon,
@@ -53,6 +56,8 @@ export function App(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Selection | null>(null);
+  const [showEnv, setShowEnv] = useState(false);
+  const [keyMissing, setKeyMissing] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -61,6 +66,19 @@ export function App(): JSX.Element {
       .then(setGroups)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
   }, []);
+
+  // A missing API key is the most common reason a benchmark dies on its first
+  // request. Finding that out from a badge beats finding it out from a stack of
+  // failed runs — so the shell asks once, and again whenever the page is shown.
+  useEffect(() => {
+    if (showEnv) return;
+    fetch("/api/env")
+      .then((res) => res.json() as Promise<EnvVarState[]>)
+      .then((vars) =>
+        setKeyMissing(vars.some((v) => v.name === "OPENAI_API_KEY" && v.masked === null)),
+      )
+      .catch(() => setKeyMissing(false));
+  }, [showEnv]);
 
   // "/" focuses the filter, the way every search-first tool behaves.
   useEffect(() => {
@@ -89,7 +107,28 @@ export function App(): JSX.Element {
           <TerminalIcon className="size-5" />
           <span className="font-semibold tracking-tight">tools</span>
           <span className="text-xs text-muted-foreground">local UI</span>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={showEnv ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setShowEnv((on) => !on)}
+                  aria-pressed={showEnv}
+                >
+                  <span className="relative">
+                    <ServerIcon />
+                    {keyMissing && (
+                      <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-destructive" />
+                    )}
+                  </span>
+                  Environment
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {keyMissing ? "No OPENAI_API_KEY set" : "Variables the commands will inherit"}
+              </TooltipContent>
+            </Tooltip>
             <ThemeToggle />
           </div>
         </header>
@@ -121,13 +160,18 @@ export function App(): JSX.Element {
                       </h2>
                       {group.commands.map((cmd) => {
                         const active =
-                          selected?.group === group.name && selected.command === cmd.name;
+                          !showEnv &&
+                          selected?.group === group.name &&
+                          selected.command === cmd.name;
                         return (
                           <button
                             key={cmd.name}
                             type="button"
                             title={cmd.description}
-                            onClick={() => setSelected({ command: cmd.name, group: group.name })}
+                            onClick={() => {
+                              setSelected({ command: cmd.name, group: group.name });
+                              setShowEnv(false);
+                            }}
                             className={cn(
                               "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-mono text-[13px] transition-colors",
                               active
@@ -166,7 +210,9 @@ export function App(): JSX.Element {
           </aside>
 
           <main className="min-h-0 overflow-hidden">
-            {error !== null ? (
+            {showEnv ? (
+              <EnvPanel />
+            ) : error !== null ? (
               <Centered>
                 <p className="text-sm text-destructive">Could not load commands: {error}</p>
               </Centered>

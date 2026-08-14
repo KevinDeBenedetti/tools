@@ -39,6 +39,9 @@ export async function probeModel(
     await withRetry(
       () =>
         complete(client, {
+          // An 8-token budget spent on thinking is 8 tokens the probe waits
+          // for and learns nothing from; reachability is all that is asked.
+          disableReasoning: model.hasReasoning,
           maxTokens: PROBE_MAX_TOKENS,
           model: model.id,
           prompt: PROBE_PROMPT,

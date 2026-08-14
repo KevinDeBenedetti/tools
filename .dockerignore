@@ -1,0 +1,27 @@
+# Deliberately conservative. Several commands read repo files at run time — the
+# todo group reads TODO.yml and labels.yml straight off disk — so excluding
+# "obviously useless" content here surfaces later as a command that cannot find
+# its input. Only genuinely reinstalled, regenerated or secret paths belong
+# below.
+
+# Reinstalled in the image, and a host copy would be the wrong platform anyway.
+node_modules
+dist
+coverage
+
+# Secrets belong to run time, never to an image layer.
+.env
+.env.*
+!.env.example
+
+# History and CI metadata: large, and nothing reads them at run time.
+.git
+.github
+
+# Local tool caches.
+.claude
+.prek
+*.log
+.DS_Store
+.vscode
+.idea

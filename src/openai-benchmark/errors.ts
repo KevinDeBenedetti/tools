@@ -20,6 +20,13 @@ export interface ClassifiedError {
   status?: number;
   /** How long the provider asked us to wait, when it said so */
   retryAfterMs?: number;
+  /**
+   * Epoch ms at which the provider says the current limit window reopens.
+   * Distinct from `retryAfterMs`: that one paces a retry within a run, this one
+   * answers "come back tomorrow" — a daily quota resets at a wall-clock time
+   * worth telling the user about rather than sleeping through.
+   */
+  resetAt?: number;
 }
 
 /** Kinds worth retrying: the model may well answer on the next attempt. */
@@ -78,6 +85,59 @@ function retryAfterMs(headers: unknown): number | undefined {
   return undefined;
 }
 
+const DURATION_PART = /(\d+(?:\.\d+)?)(ms|s|m|h|d)/g;
+const DURATION_UNIT_MS: Record<string, number> = {
+  d: 86_400_000,
+  h: 3_600_000,
+  m: 60_000,
+  ms: 1,
+  s: 1000,
+};
+
+/** Parse a Go-style duration — "6m0s", "1h30m", "500ms" — into milliseconds. */
+function parseDuration(value: string): number | undefined {
+  let total = 0;
+  let matched = false;
+  for (const [, amount, unit] of value.matchAll(DURATION_PART)) {
+    matched = true;
+    total += Number(amount) * (DURATION_UNIT_MS[unit!] ?? 0);
+  }
+  return matched ? total : undefined;
+}
+
+/** A reset further out than this is a misread header, not a real quota window. */
+const MAX_RESET_WINDOW_MS = 48 * 3_600_000;
+
+/**
+ * When the current rate-limit window reopens, as epoch ms.
+ *
+ * The encoding is not standardised and the providers disagree: OpenRouter sends
+ * an absolute Unix timestamp, OpenAI a duration like `6m0s`, others a plain
+ * number of seconds to wait. All three are accepted by shape — a value large
+ * enough to be a timestamp is read as one, anything smaller as a delay — and a
+ * result in the past or absurdly far out is discarded rather than shown.
+ */
+function parseResetAt(headers: unknown, now: number): number | undefined {
+  const raw =
+    headerValue(headers, "x-ratelimit-reset") ?? headerValue(headers, "x-ratelimit-reset-requests");
+  if (raw === undefined || raw.trim() === "") return undefined;
+
+  const value = raw.trim();
+  let at: number | undefined;
+
+  const n = Number(value);
+  if (Number.isFinite(n)) {
+    // 1e12 is 2001 in ms and year 33658 in seconds; 1e9 is 2001 in seconds.
+    at = n >= 1e12 ? n : n >= 1e9 ? n * 1000 : now + n * 1000;
+  } else {
+    const duration = parseDuration(value);
+    at = duration === undefined ? Date.parse(value) : now + duration;
+  }
+
+  if (at === undefined || !Number.isFinite(at)) return undefined;
+  return at > now && at - now <= MAX_RESET_WINDOW_MS ? at : undefined;
+}
+
 export function classifyError(err: unknown): ClassifiedError {
   const message = err instanceof Error ? err.message : String(err);
 
@@ -90,10 +150,18 @@ export function classifyError(err: unknown): ClassifiedError {
 
     if (typeof e.status === "number") {
       const kind = statusToKind(e.status);
-      const wait = kind === "rate_limited" ? retryAfterMs(e.headers) : undefined;
-      return wait === undefined
-        ? { kind, message, status: e.status }
-        : { kind, message, retryAfterMs: wait, status: e.status };
+      if (kind !== "rate_limited") {
+        return { kind, message, status: e.status };
+      }
+      const wait = retryAfterMs(e.headers);
+      const reset = parseResetAt(e.headers, Date.now());
+      return {
+        kind,
+        message,
+        status: e.status,
+        ...(wait === undefined ? {} : { retryAfterMs: wait }),
+        ...(reset === undefined ? {} : { resetAt: reset }),
+      };
     }
   }
 

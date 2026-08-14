@@ -96,9 +96,12 @@ export function useRun(): Run {
           if (event.type === "exit") {
             setExitCode(event.code);
             setStatus(event.code === 0 ? "done" : "failed");
-          } else {
+          } else if (event.type === "out" || event.type === "err") {
             setOutput((prev) => append(prev, event));
           }
+          // Anything else — a keepalive ping, a type added later — is silence
+          // by design: appending an event with no `data` would print
+          // "undefined" into the run's output.
         }
       }
     } catch (error) {

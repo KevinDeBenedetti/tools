@@ -36,6 +36,36 @@ make purge-release ARGS="--repo owner/repo --keep-latest 3 --dry-run"
 
 → Full usage guide: [docs](https://kevindebenedetti.github.io/tools/getting-started)
 
+## Running in Docker
+
+Brings up the web UI with the source bind-mounted, so a save in your editor
+restarts the server:
+
+```bash
+bun run docker:up      # build + start, waits for the healthcheck
+bun run docker:logs    # follow the server output
+bun run docker:down    # stop
+```
+
+Handy while it runs:
+
+```bash
+bun run docker:sh                          # shell inside the container
+bun run docker:cli -- benchmark models      # run the CLI in the container
+```
+
+The host port comes from `TOOLS_UI_PORT` (default `3030`); the container side is
+fixed, so `TOOLS_UI_PORT=3035 bun run docker:up` moves only the published port.
+`TOOLS_TARGET=runtime` builds the self-contained image — no mounts, no hot
+reload, unprivileged user — instead of the development one.
+
+Credentials are never baked into the image. Provide them through `.env`, the
+environment, or the UI's own **Environment** page.
+
+> **The published port is bound to `127.0.0.1` on purpose.** This server starts
+> any command in the registry, so reaching the port is equivalent to running
+> commands on the host. Keep it on loopback.
+
 ## Documentation
 
 Full documentation is available at **https://kevindebenedetti.github.io/tools/**.

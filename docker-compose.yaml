@@ -1,0 +1,41 @@
+name: tools
+
+services:
+  ui:
+    build:
+      context: .
+      # `docker compose up` gives you the hot-reloading container; build the
+      # self-contained one with TOOLS_TARGET=runtime.
+      target: ${TOOLS_TARGET:-dev}
+    ports:
+      # Loopback is not a default here, it is the security boundary. This server
+      # starts any command in the registry, so a port published on 0.0.0.0 is
+      # remote code execution on the host. Host port comes from TOOLS_UI_PORT
+      # (slot 3 in the dev-port registry); the container side stays fixed.
+      - "127.0.0.1:${TOOLS_UI_PORT:-3030}:3030"
+    environment:
+      # Set here rather than only in the image so they win over anything the
+      # env_file below happens to carry.
+      TOOLS_UI_HOST: 0.0.0.0
+      TOOLS_UI_PORT: 3030
+    env_file:
+      # Optional: the UI can also take OPENAI_BASE_URL / OPENAI_API_KEY from its
+      # Environment page, so a missing .env is a valid way to run this.
+      - path: .env
+        required: false
+    volumes:
+      # Live source, so a save in the editor restarts the server.
+      - .:/app
+      # Anonymous volume: keeps the image's install visible instead of letting
+      # the host's node_modules — absent, or built for another platform — shadow
+      # it through the bind mount above.
+      - /app/node_modules
+    healthcheck:
+      # An endpoint that needs no credentials and no network, so it reports the
+      # server's health rather than the provider's.
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3030/api/commands"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
