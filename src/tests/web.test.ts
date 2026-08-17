@@ -13,6 +13,7 @@ import {
   overrideEnv,
   setOverride,
 } from "../web/env";
+import { InspectError, inspectProvider, normalizeBaseUrl, testModel } from "../web/inspect";
 import type { RunEvent, WebCommand } from "../web/protocol";
 import { streamRun } from "../web/runner";
 
@@ -326,5 +327,335 @@ describe("describeEnv", () => {
   test("editable variables are listed first", () => {
     const names = describeEnv({}).map((v) => v.name);
     expect(names.slice(0, 2)).toEqual(["OPENAI_API_KEY", "OPENAI_BASE_URL"]);
+  });
+});
+
+// ── Provider inspection ────────────────────────────────────────────────────────
+
+interface StubCall {
+  url: string;
+  path: string;
+  method: string;
+  body: string | null;
+  /** Whether the attempt carried an Authorization header */
+  authorized: boolean;
+}
+
+/**
+ * Stand in for the provider. The handler decides per call, so a route can answer
+ * differently with and without credentials — which is the whole mechanism the
+ * public/private verdict rests on.
+ */
+function stubProvider(handler: (call: StubCall) => { status: number; body?: string }): {
+  calls: StubCall[];
+  restore: () => void;
+} {
+  const calls: StubCall[] = [];
+  const original = globalThis.fetch;
+
+  globalThis.fetch = ((input: string | URL | Request, init?: RequestInit) => {
+    const headers = (init?.headers ?? {}) as Record<string, string>;
+    const url = String(input);
+    const call: StubCall = {
+      authorized: headers["authorization"] !== undefined,
+      body: typeof init?.body === "string" ? init.body : null,
+      method: init?.method ?? "GET",
+      path: new URL(url).pathname.replace(/^\/v1/, ""),
+      url,
+    };
+    calls.push(call);
+    const { status, body = "" } = handler(call);
+    return Promise.resolve(new Response(body, { status }));
+  }) as typeof globalThis.fetch;
+
+  return {
+    calls,
+    restore: () => {
+      globalThis.fetch = original;
+    },
+  };
+}
+
+const CATALOGUE = JSON.stringify({
+  data: [
+    {
+      architecture: { input_modalities: ["text", "image"], output_modalities: ["text"] },
+      context_length: 128_000,
+      created: 1_700_000_000,
+      id: "vendor/chat-model:free",
+      name: "Chat Model (free)",
+      pricing: { completion: "0", prompt: "0" },
+      supported_parameters: ["temperature", "reasoning"],
+      top_provider: { is_moderated: true, max_completion_tokens: 4096 },
+    },
+    {
+      id: "vendor/embed-model",
+      name: "Embed Model",
+      output_modalities: ["embeddings"],
+      owned_by: "vendor",
+      pricing: { embedding: "0.00000002" },
+    },
+  ],
+  total_count: 2,
+});
+
+/** A provider that guards everything and implements the usual OpenAI surface. */
+function guardedProvider(call: StubCall): { status: number; body?: string } {
+  if (!call.authorized) return { body: '{"error":{"message":"No auth"}}', status: 401 };
+  if (call.path === "/models") return { body: CATALOGUE, status: 200 };
+  if (call.path === "/responses" || call.path === "/credits" || call.path === "/key") {
+    return { body: '{"error":"Not found"}', status: 404 };
+  }
+  return { body: '{"error":{"message":"model is required"}}', status: 400 };
+}
+
+describe("normalizeBaseUrl", () => {
+  test("strips trailing slashes so paths never double up", () => {
+    expect(normalizeBaseUrl("https://host/v1/")).toBe("https://host/v1");
+    expect(normalizeBaseUrl("  https://host/v1///  ")).toBe("https://host/v1");
+  });
+
+  test("refuses anything that is not an absolute http(s) URL", () => {
+    expect(() => normalizeBaseUrl("openrouter.ai/api/v1")).toThrow(InspectError);
+    expect(() => normalizeBaseUrl("file:///etc/passwd")).toThrow(/http or https/);
+    expect(() => normalizeBaseUrl("")).toThrow(/required/);
+  });
+});
+
+describe("inspectProvider", () => {
+  const apiKey = keyLike("inspectorkey0123456789");
+
+  test("reports routes, access and the catalogue for a guarded provider", async () => {
+    const stub = stubProvider(guardedProvider);
+    let report;
+    try {
+      report = await inspectProvider({ apiKey, baseUrl: "https://provider.test/v1" });
+    } finally {
+      stub.restore();
+    }
+
+    expect(report.authRequired).toBe(true);
+
+    const models = report.routes.find((r) => r.path === "/models");
+    expect(models?.verdict).toBe("available");
+    expect(models?.access).toBe("private");
+
+    // A 400 means the route validated our request — it is there and the key passed.
+    const chat = report.routes.find((r) => r.path === "/chat/completions");
+    expect(chat?.verdict).toBe("available");
+    expect(chat?.access).toBe("private");
+    expect(chat?.message).toBe("model is required");
+
+    // A route the provider does not implement is not a credentials problem, and
+    // its absence says nothing about how it would be guarded.
+    const responses = report.routes.find((r) => r.path === "/responses");
+    expect(responses?.verdict).toBe("missing");
+    expect(responses?.access).toBe("unknown");
+  });
+
+  test("derives model metadata with the same rules as the benchmark", async () => {
+    const stub = stubProvider(guardedProvider);
+    let report;
+    try {
+      report = await inspectProvider({ apiKey, baseUrl: "https://provider.test/v1" });
+    } finally {
+      stub.restore();
+    }
+
+    expect(report.models.length).toBe(2);
+    expect(report.totalCount).toBe(2);
+
+    const chat = report.models.find((m) => m.id === "vendor/chat-model:free")!;
+    expect(chat.isFree).toBe(true);
+    expect(chat.hasReasoning).toBe(true);
+    expect(chat.outputsTextOnly).toBe(true);
+    expect(chat.isEmbedding).toBe(false);
+    expect(chat.contextLength).toBe(128_000);
+    expect(chat.maxCompletionTokens).toBe(4096);
+    expect(chat.moderated).toBe(true);
+    expect(chat.inputModalities).toEqual(["text", "image"]);
+
+    const embed = report.models.find((m) => m.id === "vendor/embed-model")!;
+    expect(embed.isEmbedding).toBe(true);
+    expect(embed.isFree).toBe(false);
+    // Embedding models bill input only, so an absent completion price is a real
+    // zero — the pricing still counts as known.
+    expect(embed.pricingKnown).toBe(true);
+    expect(embed.inputPricePer1M).toBeCloseTo(0.02, 6);
+    expect(embed.ownedBy).toBe("vendor");
+  });
+
+  test("an inspection cannot spend a token", async () => {
+    const stub = stubProvider(guardedProvider);
+    try {
+      await inspectProvider({ apiKey, baseUrl: "https://provider.test/v1" });
+    } finally {
+      stub.restore();
+    }
+
+    // Every POST the probe sends is an empty object: the provider rejects it on
+    // validation, before any model is loaded. Nothing here can be billed.
+    const posts = stub.calls.filter((c) => c.method === "POST");
+    expect(posts.length).toBeGreaterThan(0);
+    for (const post of posts) {
+      expect(post.body).toBe("{}");
+    }
+  });
+
+  test("the key is redacted and never echoed back", async () => {
+    const stub = stubProvider(guardedProvider);
+    let report;
+    try {
+      report = await inspectProvider({ apiKey, baseUrl: "https://provider.test/v1" });
+    } finally {
+      stub.restore();
+    }
+
+    expect(report.keySource).toBe("request");
+    expect(report.keyUsed).toBe(maskSecret(apiKey));
+    expect(JSON.stringify(report)).not.toInclude(apiKey);
+    expect(JSON.stringify(report)).not.toInclude("inspectorkey");
+  });
+
+  test("an open endpoint is reported as public rather than merely working", async () => {
+    // What a local runtime looks like: it answers whether or not a key is sent.
+    const stub = stubProvider((call) =>
+      call.path === "/models"
+        ? { body: CATALOGUE, status: 200 }
+        : { body: '{"error":"model is required"}', status: 400 },
+    );
+    let report;
+    try {
+      report = await inspectProvider({ baseUrl: "http://localhost:11434/v1" });
+    } finally {
+      stub.restore();
+    }
+
+    expect(report.authRequired).toBe(false);
+    expect(report.keyUsed).toBeNull();
+    expect(report.keySource).toBe("none");
+    expect(report.routes.find((r) => r.path === "/models")?.access).toBe("public");
+    expect(report.routes.find((r) => r.path === "/chat/completions")?.access).toBe("public");
+  });
+
+  test("a 404 on a versionless URL says what is probably wrong with it", async () => {
+    const stub = stubProvider(() => ({ body: "not found", status: 404 }));
+    let report;
+    try {
+      report = await inspectProvider({ apiKey, baseUrl: "https://openrouter.ai/api" });
+    } finally {
+      stub.restore();
+    }
+
+    expect(report.models).toEqual([]);
+    expect(report.modelsError).toInclude("https://openrouter.ai/api/v1");
+    // Nothing was learned about access, so nothing is claimed.
+    expect(report.authRequired).toBeNull();
+  });
+
+  test("an endpoint that never answers is unreachable, not unauthorized", async () => {
+    const stub = stubProvider(() => {
+      throw new Error("Unable to connect");
+    });
+    let report;
+    try {
+      report = await inspectProvider({ apiKey, baseUrl: "https://nothing.test/v1" });
+    } finally {
+      stub.restore();
+    }
+
+    expect(report.routes.every((r) => r.verdict === "unreachable")).toBe(true);
+    expect(report.modelsError).toInclude("Could not reach");
+  });
+
+  test("a key with whitespace is refused as a bad paste", async () => {
+    await expect(
+      inspectProvider({ apiKey: keyLike("abc\ndef"), baseUrl: "https://provider.test/v1" }),
+    ).rejects.toThrow(/whitespace/);
+  });
+
+  test("a base URL is required when the session is not being used", async () => {
+    await expect(inspectProvider({})).rejects.toThrow(InspectError);
+  });
+});
+
+describe("testModel", () => {
+  const apiKey = keyLike("testmodelkey0123456789");
+  const base = { apiKey, baseUrl: "https://provider.test/v1" };
+
+  test("reports what a chat model actually said", async () => {
+    const stub = stubProvider(() => ({
+      body: JSON.stringify({
+        choices: [{ message: { content: "  OK  " } }],
+        usage: { completion_tokens: 3, prompt_tokens: 5 },
+      }),
+      status: 200,
+    }));
+    let result;
+    try {
+      result = await testModel({ ...base, model: "vendor/chat-model" });
+    } finally {
+      stub.restore();
+    }
+
+    expect(result.ok).toBe(true);
+    expect(result.route).toBe("chat");
+    expect(result.sample).toBe("OK");
+    expect(result.completionTokens).toBe(3);
+    expect(stub.calls[0]?.path).toBe("/chat/completions");
+  });
+
+  test("an embedding model is driven through /embeddings and reports its width", async () => {
+    const stub = stubProvider(() => ({
+      body: JSON.stringify({ data: [{ embedding: [0.1, 0.2, 0.3] }], usage: { prompt_tokens: 2 } }),
+      status: 200,
+    }));
+    let result;
+    try {
+      result = await testModel({ ...base, embedding: true, model: "vendor/embed-model" });
+    } finally {
+      stub.restore();
+    }
+
+    expect(result.ok).toBe(true);
+    expect(result.route).toBe("embeddings");
+    expect(result.dimensions).toBe(3);
+    expect(stub.calls[0]?.path).toBe("/embeddings");
+  });
+
+  test("reasoning is switched off only when the model advertises it", async () => {
+    const stub = stubProvider(() => ({ body: '{"choices":[]}', status: 200 }));
+    try {
+      await testModel({ ...base, disableReasoning: true, model: "reasoner" });
+      await testModel({ ...base, model: "plain" });
+    } finally {
+      stub.restore();
+    }
+
+    expect(stub.calls[0]?.body).toInclude('"reasoning"');
+    // A strict OpenAI-compatible server rejects body parameters it does not know,
+    // so the extension must not be sent to a model that never claimed reasoning.
+    expect(stub.calls[1]?.body).not.toInclude('"reasoning"');
+  });
+
+  test("the provider's own refusal is what gets shown", async () => {
+    const stub = stubProvider(() => ({
+      body: '{"error":{"message":"Insufficient credits"}}',
+      status: 402,
+    }));
+    let result;
+    try {
+      result = await testModel({ ...base, model: "vendor/expensive" });
+    } finally {
+      stub.restore();
+    }
+
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(402);
+    expect(result.error).toBe("Insufficient credits");
+  });
+
+  test("a model id is required", async () => {
+    await expect(testModel({ ...base, model: "  " })).rejects.toThrow(/model id is required/);
   });
 });

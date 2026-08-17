@@ -20,6 +20,13 @@ import type { FormValues } from "./args";
 import { buildArgv } from "./args";
 import { findCommand, serializeGroups } from "./catalog";
 import { clearOverrides, describeEnv, EnvOverrideError, overrideEnv, setOverride } from "./env";
+import {
+  InspectError,
+  type InspectInput,
+  inspectProvider,
+  type ModelTestInput,
+  testModel,
+} from "./inspect";
 import { streamRun } from "./runner";
 import index from "./app/index.html";
 
@@ -115,6 +122,35 @@ async function handleEnv(req: Request): Promise<Response> {
   return Response.json(describeEnv());
 }
 
+/**
+ * Probe a provider, or send one request to one of its models.
+ *
+ * Both handlers take credentials in the request body and hand back a report
+ * that carries only a redacted rendering of them — the browser never gets a key
+ * back out, the same rule the environment endpoints follow.
+ */
+function inspectHandler<T>(
+  run: (body: T) => Promise<unknown>,
+): (req: Request) => Promise<Response> {
+  return async (req: Request): Promise<Response> => {
+    let body: T;
+    try {
+      body = (await req.json()) as T;
+    } catch {
+      return badRequest("Invalid JSON body");
+    }
+
+    try {
+      return Response.json(await run(body));
+    } catch (error) {
+      if (error instanceof InspectError) return badRequest(error.message);
+      // A provider that hangs up mid-probe is a report the UI can show, not a
+      // reason to hand back a bare 500 with nothing in it.
+      return badRequest(error instanceof Error ? error.message : String(error), 502);
+    }
+  };
+}
+
 // Return type is inferred: Bun.Server's generic parameter moves between versions.
 function start() {
   try {
@@ -130,6 +166,8 @@ function start() {
         "/": index,
         "/api/commands": () => Response.json(serializeGroups(allGroups)),
         "/api/env": { GET: () => Response.json(describeEnv()), POST: handleEnv },
+        "/api/inspect": { POST: inspectHandler<InspectInput>(inspectProvider) },
+        "/api/inspect/model": { POST: inspectHandler<ModelTestInput>(testModel) },
         "/api/run": { POST: handleRun },
       },
     });

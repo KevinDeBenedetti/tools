@@ -39,7 +39,7 @@ export const EMBEDDING_QUERY: ModelQuery = { output_modalities: "embeddings" };
 // pricing in their /models response. Plain OpenAI does not — pricing is then
 // reported as unknown rather than guessed. The extra fields below are all
 // optional: anything the provider omits simply degrades to a safe default.
-interface ApiModel {
+export interface ApiModel {
   id: string;
   name?: string;
   pricing?: { prompt?: string | number; completion?: string | number; embedding?: string | number };
@@ -132,7 +132,14 @@ function detectEmbedding(model: ApiModel): boolean {
   return output === undefined ? false : output.includes("embedding");
 }
 
-function toModelDef(model: ApiModel): ModelDef {
+/**
+ * Read one raw catalogue entry into the shape the rest of the code uses.
+ *
+ * Exported because the web UI's provider inspector shows the same facts in a
+ * table: sharing the derivation is what keeps "is this model free" from having
+ * two answers depending on which half of the tool you asked.
+ */
+export function toModelDef(model: ApiModel): ModelDef {
   const isEmbedding = detectEmbedding(model);
   const prompt = toNumber(model.pricing?.prompt ?? model.pricing?.embedding);
   // Embedding models bill input only, so an absent completion price is a real

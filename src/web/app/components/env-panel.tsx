@@ -16,16 +16,9 @@ import { Label } from "#components/ui/label";
 import { Separator } from "#components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "#components/ui/tooltip";
 import { useEnv } from "#hooks/use-env";
+import { PRESETS } from "#lib/providers";
 import { cn } from "#lib/utils";
 import type { EnvVarState } from "../../protocol";
-
-// Known endpoints, so switching provider is a click rather than a URL to
-// remember — getting this wrong is the single most common benchmark failure.
-const PRESETS: { label: string; url: string }[] = [
-  { label: "OpenAI", url: "https://api.openai.com/v1" },
-  { label: "OpenRouter", url: "https://openrouter.ai/api/v1" },
-  { label: "Ollama", url: "http://localhost:11434/v1" },
-];
 
 const SOURCE_LABEL: Record<EnvVarState["source"], string> = {
   environment: "from .env",

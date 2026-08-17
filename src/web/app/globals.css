@@ -25,6 +25,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-success: var(--success);
+  --color-warning: var(--warning);
 
   --font-mono: var(--font-mono);
 
@@ -54,6 +55,9 @@
   --accent-foreground: oklch(0.21 0.006 285.885);
   --destructive: oklch(0.577 0.245 27.325);
   --success: oklch(0.596 0.145 163.225);
+  /* Amber: the "worth a look, not broken" register — an unauthenticated route
+     is a finding, not an error, and painting it destructive-red overstates it. */
+  --warning: oklch(0.666 0.162 58.318);
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
   --ring: oklch(0.705 0.015 286.067);
@@ -76,6 +80,7 @@
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --success: oklch(0.696 0.17 162.48);
+  --warning: oklch(0.769 0.188 70.08);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.552 0.016 285.938);

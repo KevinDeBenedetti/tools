@@ -3,6 +3,7 @@ import {
   GaugeIcon,
   GitBranchIcon,
   ListTodoIcon,
+  NetworkIcon,
   SearchIcon,
   ServerIcon,
   TerminalIcon,
@@ -11,6 +12,7 @@ import { type JSX, type ReactNode, useEffect, useMemo, useRef, useState } from "
 
 import { CommandPanel } from "#components/command-panel";
 import { EnvPanel } from "#components/env-panel";
+import { InspectPanel } from "#components/inspect-panel";
 import { ThemeToggle } from "#components/theme-toggle";
 import { Button } from "#components/ui/button";
 import { Input } from "#components/ui/input";
@@ -31,6 +33,9 @@ interface Selection {
   group: string;
   command: string;
 }
+
+/** Which pane the main area is showing. Picking a command returns to "commands". */
+type View = "commands" | "env" | "inspect";
 
 function matches(query: string, ...fields: string[]): boolean {
   const q = query.trim().toLowerCase();
@@ -56,7 +61,7 @@ export function App(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Selection | null>(null);
-  const [showEnv, setShowEnv] = useState(false);
+  const [view, setView] = useState<View>("commands");
   const [keyMissing, setKeyMissing] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -71,14 +76,14 @@ export function App(): JSX.Element {
   // request. Finding that out from a badge beats finding it out from a stack of
   // failed runs — so the shell asks once, and again whenever the page is shown.
   useEffect(() => {
-    if (showEnv) return;
+    if (view === "env") return;
     fetch("/api/env")
       .then((res) => res.json() as Promise<EnvVarState[]>)
       .then((vars) =>
         setKeyMissing(vars.some((v) => v.name === "OPENAI_API_KEY" && v.masked === null)),
       )
       .catch(() => setKeyMissing(false));
-  }, [showEnv]);
+  }, [view]);
 
   // "/" focuses the filter, the way every search-first tool behaves.
   useEffect(() => {
@@ -111,10 +116,24 @@ export function App(): JSX.Element {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant={showEnv ? "secondary" : "ghost"}
+                  variant={view === "inspect" ? "secondary" : "ghost"}
                   size="sm"
-                  onClick={() => setShowEnv((on) => !on)}
-                  aria-pressed={showEnv}
+                  onClick={() => setView((v) => (v === "inspect" ? "commands" : "inspect"))}
+                  aria-pressed={view === "inspect"}
+                >
+                  <NetworkIcon />
+                  API inspector
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Probe an AI endpoint and list its models</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={view === "env" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setView((v) => (v === "env" ? "commands" : "env"))}
+                  aria-pressed={view === "env"}
                 >
                   <span className="relative">
                     <ServerIcon />
@@ -160,7 +179,7 @@ export function App(): JSX.Element {
                       </h2>
                       {group.commands.map((cmd) => {
                         const active =
-                          !showEnv &&
+                          view === "commands" &&
                           selected?.group === group.name &&
                           selected.command === cmd.name;
                         return (
@@ -170,7 +189,7 @@ export function App(): JSX.Element {
                             title={cmd.description}
                             onClick={() => {
                               setSelected({ command: cmd.name, group: group.name });
-                              setShowEnv(false);
+                              setView("commands");
                             }}
                             className={cn(
                               "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-mono text-[13px] transition-colors",
@@ -210,8 +229,10 @@ export function App(): JSX.Element {
           </aside>
 
           <main className="min-h-0 overflow-hidden">
-            {showEnv ? (
+            {view === "env" ? (
               <EnvPanel />
+            ) : view === "inspect" ? (
+              <InspectPanel />
             ) : error !== null ? (
               <Centered>
                 <p className="text-sm text-destructive">Could not load commands: {error}</p>
