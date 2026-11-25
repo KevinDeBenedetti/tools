@@ -1,18 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { executeClean, scanAuthors, type RewriteRule } from "../github/authors/clean-authors";
-
-function git(repoPath: string, args: string[], env?: Record<string, string>): string {
-  return execFileSync("git", args, {
-    cwd: repoPath,
-    encoding: "utf-8",
-    env: { ...process.env, ...env },
-    stdio: ["pipe", "pipe", "pipe"],
-  }).trim();
-}
+import { git } from "./helpers/git";
 
 function commit(repoPath: string, name: string, email: string, message: string): void {
   git(

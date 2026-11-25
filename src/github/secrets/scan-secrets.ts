@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ScanSecretsOptionsSchema, type SecretMatch, type SecretScanResult } from "../types";
 import { formatError } from "../shared";
+import { gitEnv } from "../../shared/git-env";
 
 const DEFAULT_SECRET_PATTERNS = [
   { expression: "sk-[A-Za-z0-9_-]{16,}", name: "OpenAI-style key" },
@@ -100,6 +101,7 @@ export class ScanSecretsService {
 
       execFileSync("gh", ["repo", "clone", this.options.repo, repoPath], {
         encoding: "utf8",
+        env: gitEnv(),
         stdio: "pipe",
       });
 
@@ -107,6 +109,7 @@ export class ScanSecretsService {
     }
 
     const repoPath = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      env: gitEnv(),
       encoding: "utf8",
       stdio: "pipe",
     }).trim();
@@ -177,6 +180,7 @@ export class ScanSecretsService {
   private runGitSearch(repoPath: string, args: string[]): string {
     try {
       return execFileSync("git", ["-C", repoPath, ...args], {
+        env: gitEnv(),
         encoding: "utf8",
         stdio: "pipe",
       });
