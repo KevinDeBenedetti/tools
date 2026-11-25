@@ -72,12 +72,12 @@ jobs:
       pull-requests: read
     uses: KevinDeBenedetti/github-workflows/.github/workflows/check-bot-commits.yml@main
 
-  dispatch:
-    name: Dispatch docs rebuild
+  # Verify only: the docs hub polls this repo's docs/ on a schedule, so no
+  # dispatch (and no GitHub App) is needed. client-id is deprecated upstream.
+  docs:
+    name: Docs
     needs: [ci, security]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
     uses: KevinDeBenedetti/github-workflows/.github/workflows/cd-docs.yml@main
-    with:
-      client-id: ${{ vars.DOCS_APP_CLIENT_ID }}
-    secrets:
-      APP_PRIVATE_KEY: ${{ secrets.DOCS_APP_PRIVATE_KEY }}
