@@ -8,6 +8,7 @@ import {
   DetectBotsOptionsSchema,
 } from "../../shared/types/github";
 import { formatError } from "../shared";
+import { gitEnv } from "../../shared/git-env";
 
 const DEFAULT_BOT_PATTERNS = [
   "dependabot",
@@ -104,6 +105,7 @@ export class DetectBotsService {
 
       execFileSync("gh", ["repo", "clone", this.options.repo, repoPath], {
         encoding: "utf8",
+        env: gitEnv(),
         stdio: "pipe",
       });
 
@@ -111,6 +113,7 @@ export class DetectBotsService {
     }
 
     const repoPath = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      env: gitEnv(),
       encoding: "utf8",
       stdio: "pipe",
     }).trim();
@@ -123,6 +126,7 @@ export class DetectBotsService {
       "git",
       ["-C", repoPath, "log", "--all", "--format=%H%x1f%an%x1f%ae%x1f%s%x1f%b%x1f%aI%x1e"],
       {
+        env: gitEnv(),
         encoding: "utf8",
         maxBuffer: 50 * 1024 * 1024,
         stdio: "pipe",
@@ -180,6 +184,7 @@ export class DetectBotsService {
 
     try {
       execFileSync("git", ["-C", repoPath, "filter-repo", "--mailmap", mailmapFile, "--force"], {
+        env: gitEnv(),
         stdio: "pipe",
       });
       console.log(`✅ Successfully purged ${botCommits.length} bot commits`);

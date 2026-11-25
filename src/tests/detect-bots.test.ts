@@ -1,17 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DetectBotsService } from "../github/bot/detect";
-
-function git(repoPath: string, args: string[], env?: Record<string, string>): void {
-  execFileSync("git", args, {
-    cwd: repoPath,
-    env: { ...process.env, ...env },
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-}
+import { git } from "./helpers/git";
 
 function commit(repoPath: string, name: string, email: string, message: string): void {
   git(

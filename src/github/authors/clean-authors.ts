@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { gitEnv } from "../../shared/git-env";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,7 @@ export interface CleanResult {
 
 function git(args: string[], cwd: string): string {
   return execFileSync("git", args, {
+    env: gitEnv(),
     cwd,
     encoding: "utf-8",
     stdio: ["pipe", "pipe", "pipe"],
@@ -92,7 +94,7 @@ export function scanAuthors(repoPath: string): ScanResult {
 
 function hasFilterRepo(): boolean {
   try {
-    execFileSync("git", ["filter-repo", "--version"], { stdio: "pipe" });
+    execFileSync("git", ["filter-repo", "--version"], { env: gitEnv(), stdio: "pipe" });
     return true;
   } catch {
     return false;
@@ -140,6 +142,7 @@ function runFilterRepo(repoPath: string, rules: RewriteRule[], removeCoAuthors: 
     "git",
     ["filter-repo", "--commit-callback", lines.join("\n"), "--force"],
     {
+      env: gitEnv(),
       cwd: repoPath,
       stdio: "inherit",
     },
@@ -174,7 +177,7 @@ function runFilterBranch(repoPath: string, rules: RewriteRule[], removeCoAuthors
         "--",
         "--all",
       ],
-      { cwd: repoPath, stdio: "inherit" },
+      { cwd: repoPath, env: gitEnv(), stdio: "inherit" },
     );
 
     if (result.status !== 0) {
@@ -201,7 +204,7 @@ function runFilterBranch(repoPath: string, rules: RewriteRule[], removeCoAuthors
         "--",
         "--all",
       ],
-      { cwd: repoPath, stdio: "inherit" },
+      { cwd: repoPath, env: gitEnv(), stdio: "inherit" },
     );
 
     try {
