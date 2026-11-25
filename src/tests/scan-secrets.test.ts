@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ScanSecretsService } from "../github/secrets/scan-secrets";
+import { git as runGit } from "./helpers/git";
 
 // Secrets are assembled at runtime so this test file never contains
 // anything that looks like a real credential to scanners.
@@ -11,16 +11,11 @@ const FAKE_GITHUB_TOKEN = ["ghp", `${"a".repeat(12)}${"1".repeat(12)}`].join("_"
 const FAKE_OPENAI_KEY = ["sk", `${"b".repeat(10)}${"2".repeat(10)}`].join("-");
 
 function git(repoPath: string, args: string[]): void {
-  execFileSync("git", args, {
-    cwd: repoPath,
-    env: {
-      ...process.env,
-      GIT_AUTHOR_EMAIL: "kevin@example.com",
-      GIT_AUTHOR_NAME: "Kevin",
-      GIT_COMMITTER_EMAIL: "kevin@example.com",
-      GIT_COMMITTER_NAME: "Kevin",
-    },
-    stdio: ["pipe", "pipe", "pipe"],
+  runGit(repoPath, args, {
+    GIT_AUTHOR_EMAIL: "kevin@example.com",
+    GIT_AUTHOR_NAME: "Kevin",
+    GIT_COMMITTER_EMAIL: "kevin@example.com",
+    GIT_COMMITTER_NAME: "Kevin",
   });
 }
 
